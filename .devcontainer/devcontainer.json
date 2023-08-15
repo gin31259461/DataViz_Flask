@@ -1,0 +1,32 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+	"name": "dataviz flask dev container",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"forwardPorts": [
+		3090
+	],
+	"postCreateCommand": "bash .devcontainer/initial.sh",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"shardulm94.trailing-spaces",
+				"Gruntfuggly.todo-tree",
+				"rangav.vscode-thunder-client",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"DavidAnson.vscode-markdownlint",
+				"shd101wyy.markdown-preview-enhanced",
+				"ms-toolsai.jupyter",
+				"sleistner.vscode-fileutils",
+				"streetsidesoftware.code-spell-checker",
+				"eamodio.gitlens",
+				"mhutchie.git-graph",
+				"ms-azuretools.vscode-docker"
+			]
+		}
+	},
+	"remoteUser": "root"
+}

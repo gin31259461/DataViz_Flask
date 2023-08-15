@@ -1,0 +1,24 @@
+[
+  {
+    "local": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "uid": "dataviz",
+      "pwd": ".dataviz.",
+      "server": "10.21.24.190",
+      "instance": "\\SQLEXPRESS",
+      "port": 1433,
+      "db": "RawDB"
+    }
+  },
+  {
+    "local": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "uid": "dataviz",
+      "pwd": ".dataviz.",
+      "server": "localhost",
+      "instance": "\\SQLEXPRESS",
+      "port": 2433,
+      "db": "RawDB"
+    }
+  }
+]
