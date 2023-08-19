@@ -24,7 +24,11 @@
 				"streetsidesoftware.code-spell-checker",
 				"eamodio.gitlens",
 				"mhutchie.git-graph",
-				"ms-azuretools.vscode-docker"
+				"ms-azuretools.vscode-docker",
+				"ms-python.flake8",
+				"ms-python.isort",
+				"ms-python.black-formatter",
+				"joaompinto.vscode-graphviz"
 			]
 		}
 	},
