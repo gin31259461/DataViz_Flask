@@ -6,6 +6,7 @@
     "graphviz",
     "gvid",
     "headlabel",
+    "importances",
     "isna",
     "qcut"
   ]
