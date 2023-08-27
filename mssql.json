@@ -15,7 +15,7 @@
       "driver": "ODBC Driver 17 for SQL Server",
       "uid": "dataviz",
       "pwd": ".dataviz.",
-      "server": "localhost",
+      "server": "127.0.0.1",
       "instance": "\\SQLEXPRESS",
       "port": 2433,
       "db": "RawDB"
