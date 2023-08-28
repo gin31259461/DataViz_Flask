@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import text
 
-sys.path.append(f"{Path.cwd().absolute()}/")
+sys.path.append(f"{Path.cwd().parent.absolute()}/")
 from setup import setup
 
 db = setup()
@@ -72,9 +72,11 @@ df.isnull().sum()
 # ##### Initial variables
 
 # %%
+from typing import Tuple, Type
+
 datetime_format_list = ["%Y-%m-%d", "%Y-%m", "%Y%m%d", "%Y%m", "%Y"]
 # [column_name, earliest_time, latest_time]
-datetime_column_earliest_latest_tuple: list[str, pd.Timestamp, pd.Timestamp] = []
+datetime_column_earliest_latest_tuple: Tuple[str, Type[pd.Timestamp], Type[pd.Timestamp]] = []
 
 if len(datetime_format) != 0:
     datetime_format_list.insert(0, datetime_format)
@@ -99,8 +101,8 @@ for col in column_names:
     for test_format in datetime_format_list:
         is_numeric = df[col].dtype == "int64"
         is_datetime = is_numeric and (
-            not True
-            in pd.to_datetime(arg=df[col].astype("str"), format=test_format, errors="coerce")
+            True
+            not in pd.to_datetime(arg=df[col].astype("str"), format=test_format, errors="coerce")
             .isna()
             .value_counts()
             .index.to_list()
@@ -123,7 +125,8 @@ datetime_column_earliest_latest_tuple
 # #### Quantize found datetime column
 
 # %%
-# Quantize datetime problem reference: https://stackoverflow.com/questions/43500894/pandas-pd-cut-binning-datetime-column-series
+# Quantize datetime problem reference:
+# https://stackoverflow.com/questions/43500894/pandas-pd-cut-binning-datetime-column-series
 # ! this section can only execute once
 for tuple in datetime_column_earliest_latest_tuple:
     # date_range reference: https://pandas.pydata.org/docs/reference/api/pandas.date_range.html
@@ -144,7 +147,7 @@ for tuple in datetime_column_earliest_latest_tuple:
 
 # %%
 # [column_name, minimum_value, maximum_value]
-numerical_column_max_min_tuple = []
+numerical_column_max_min_tuple: Tuple[str, int, int] = []
 for col in column_names:
     is_numeric = df[col].dtype == "int64"
     is_category_column = len(df[col].unique()) <= 10
@@ -171,7 +174,7 @@ is_category_column = df[target].dtype == "object" or target_column_ratio < 0.01
 X: pd.DataFrame
 try:
     X = df.drop([target] + skip_features, axis=1)
-except:
+except KeyError:
     print("Column of target or skip features not exist in data frame")
 feature_names = X.columns.to_list()
 # If value of target column are numeric, divide it into multiple intervals (discretize)
@@ -206,7 +209,7 @@ X.head()
 # #### Encoder mapping
 
 # %%
-encoder.mapping
+category_column_mapping = encoder.mapping
 
 # %% [markdown]
 # ### Split data to training and test dataset
@@ -319,7 +322,7 @@ from graphviz import Source
 # %%
 from sklearn import tree
 
-output_file_path = f"{Path.cwd().absolute()}/classification/temp/temp.dot"
+output_file_path = f"{Path.cwd().absolute()}/temp/temp.dot"
 
 # %% [markdown]
 # #### Types definitions
@@ -346,10 +349,6 @@ class DecisionTreeEdge:
 class DecisionTreeGraph:
     nodes: list[DecisionTreeNode]
     edges: dict[str, DecisionTreeEdge]  # node1_node2 as key value
-    # TODO: What information can be record?
-    # * target
-    # * features
-    attributes: dict[str, object]  # information of attributes
 
 
 @dataclass
@@ -408,7 +407,51 @@ edges = dict(
     )
 )
 
-decision_tree_graph = DecisionTreeGraph(nodes, edges, {})
+
+# %% [markdown]
+# #### Store information
+
+# %%
+# Information storage
+# * type is category => store unique value
+# * type is numeric => store min and max value
+# * type is datetime => store min and max value
+
+# target name -> str
+# target unique values -> []
+# feature names -> []
+# feature values -> {
+#   feature1: {
+#     type, value
+#   }
+#   ...
+# }
+analysis_information: dict[str, str or list or dict] = {}
+analysis_information["target_name"] = target
+analysis_information["target_values"] = target_class_names
+analysis_information["feature_names"] = feature_names
+
+# Numeric
+feature_values: dict[str, dict[str, str or list]] = {}
+for n in numerical_column_max_min_tuple:
+    feature_values[n[0]] = {"type": "numeric", "value": [n[1], n[2]]}
+
+# Datetime
+for d in datetime_column_earliest_latest_tuple:
+    format = "%Y-%m-%d %X"
+    feature_values[d[0]] = {
+        "type": "datetime",
+        "value": [d[1].strftime(format), d[2].strftime(format)],
+    }
+
+# Category
+for c in category_column_mapping:
+    feature_values[c["col"]] = {"type": "category", "value": (c["mapping"].index.to_list())}
+    feature_values[c["col"]]["value"].pop()
+
+analysis_information["feature_values"] = feature_values
+# ! This is important information of analysis process
+analysis_information
 
 # %% [markdown]
 # ### Decision tree path parser
@@ -469,8 +512,9 @@ def DecisionTreePathParser(graph: DecisionTreeGraph, root_id: int = 0):
     return paths
 
 
+decision_tree_graph = DecisionTreeGraph(nodes, edges)
 paths = DecisionTreePathParser(decision_tree_graph, 0)
-print("Path counts = {:}".format(len(paths)))
+print("Path counts = {}".format(len(paths)))
 
 # %% [markdown]
 # ### Decision tree path analyzer
@@ -488,6 +532,5 @@ def DecisionTreePathAnalyzer():
 # %%
 paths_json_str = json.dumps(list(map(lambda path: path.__dict__, paths)))
 paths_object = json.loads(paths_json_str)
-
-# %%
+# ! This is important path analysis result include nodes and their labels
 paths_object
