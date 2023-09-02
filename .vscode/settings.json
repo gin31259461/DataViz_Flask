@@ -8,6 +8,8 @@
     "headlabel",
     "importances",
     "isna",
-    "qcut"
+    "qcut",
+    "Scikit",
+    "sklearn"
   ]
 }
