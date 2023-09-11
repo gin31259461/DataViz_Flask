@@ -9,6 +9,7 @@
     "importances",
     "isna",
     "qcut",
+    "quantile",
     "Scikit",
     "sklearn"
   ]
