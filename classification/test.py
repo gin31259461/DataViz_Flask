@@ -24,12 +24,13 @@ db = setup()
 
 # %%
 OID = 139
+analysis_depth = 30
 skip_features = []
 datetime_format = ""
-target = "教育程度類別"
+# target = "教育程度類別"
 # target = "信用卡交易金額[新台幣]"
 # target = "性別"
-# target = "產業別"
+target = "產業別"
 # target = "信用卡交易筆數"
 
 # %% [markdown]
@@ -41,9 +42,12 @@ data = db.execute(query)
 query = text("SELECT * FROM [DV].[dbo].[Object] where OID = :OID")
 object = db.execute(query, OID=OID).fetchall()
 df = pd.DataFrame(data.fetchall())
+origin_df = df.copy()
 data_object = pd.DataFrame(object)
+print(data_object["CName"])
 print(df.shape)
-df.head()
+
+df
 
 # %% [markdown]
 # ## Exploratory data analysis and feature engineering
@@ -127,17 +131,25 @@ datetime_column_earliest_latest_tuple
 # %%
 # Quantize datetime problem reference:
 # https://stackoverflow.com/questions/43500894/pandas-pd-cut-binning-datetime-column-series
-# ! this section can only execute once
+quantile_mapping = {}
+quantile_columns = []
+
 for tuple in datetime_column_earliest_latest_tuple:
     # date_range reference: https://pandas.pydata.org/docs/reference/api/pandas.date_range.html
     # Frequency reference: https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
     # 季度開始 -> QS
     # 年份開始 -> YS
+    # TODO: 測試時間用哪個頻率進行離散化效果最好，季度 or 年度 or 月 etc.
+    # * 逐一比較不同頻率的交叉驗證平均分數 (cross validation average score)
+    # * 分數越高代表頻率更適合
+    col = tuple[0]
+    quantile_columns.append(col)
     datetime_range = pd.date_range(start=tuple[1], end=tuple[2], freq="QS")
     datetime_range = datetime_range.union([tuple[2]])
     labels = ["({}, {}]".format(datetime_range[i - 1], datetime_range[i]) for i in range(1, len(datetime_range))]
-    # ! this line of code can only cut once
-    df[tuple[0]] = pd.cut(df[tuple[0]], bins=datetime_range, labels=labels, include_lowest=True)
+    quantile_interval = pd.cut(df[col], bins=datetime_range, include_lowest=True)
+    df[col] = pd.cut(df[col], bins=datetime_range, labels=labels, include_lowest=True)
+    quantile_mapping[col] = pd.Series(data=quantile_interval.unique().tolist(), index=df[col].unique().tolist())
 
 # %% [markdown]
 # ### Numerical column
@@ -162,31 +174,32 @@ numerical_column_max_min_tuple
 # %%
 # 1. 處理不同型別的屬性 (類別型，數值型) -> 都可當作分析目標
 # 2. 排除不想要的屬性，並且不加入 features (X) 裡面
-# * 針對路徑中沒被用到的屬性
-#   1. 類別型: 代表所有類別
-#   2. 數值型: 代表在 MIN - MAX 區間
-#   3. 時間型: 代表在最早與最晚的區間內
 
-# Count target column ratio to determine its data type
-target_column_ratio = len(df[target].unique()) / df[target].count()
-# if not, it's numeric
-is_category_column = df[target].dtype == "object" or target_column_ratio < 0.01
+# TODO: numeric quantile mapping
+for col in column_names:
+    column_ratio = len(df[col].unique()) / df[col].count()
+    is_categorical_column = df[col].dtype == "object" or df[col].dtype == "category" or column_ratio < 0.01
+    is_numerical_column = df[col].dtype == "int64" and not is_categorical_column
+
+    if is_numerical_column:
+        quantile_labels = ["low", "middle", "high"]
+        discrete_bin_num = 3
+        quantile = pd.qcut(df[col], q=discrete_bin_num)
+        df[col] = pd.qcut(df[col], q=discrete_bin_num, labels=quantile_labels)
+        quantile_columns.append(col)
+        quantile_mapping[col] = pd.Series(data=quantile.unique().tolist(), index=df[col].unique().tolist())
+
 X: pd.DataFrame
 try:
     X = df.drop([target] + skip_features, axis=1)
 except KeyError:
-    print("Column of target or skip features not exist in data frame")
-feature_names = X.columns.to_list()
-# If value of target column are numeric, divide it into multiple intervals (discretize)
-quantization_labels = ["low", "middle", "high"]
-discrete_bin_num = 3
-y = (
-    df[target].astype("string")
-    if is_category_column
-    else pd.qcut(df[target], q=discrete_bin_num, labels=quantization_labels)
-)
-target_class_names = y.unique().tolist()
-target_class_names
+    print("Column of target or skip features are not exist in data frame")
+
+feature_names = X.columns.tolist()
+
+y = df[target].astype("string")
+target_values = y.unique().tolist()
+target_values
 
 # %% [markdown]
 # ### Encode category column of features
@@ -197,8 +210,12 @@ target_class_names
 # %%
 import category_encoders as ce
 
+# ! Prior knowledge
+# TODO: 類別型欄位，是否有大小關係? ⇒ 讓使用者去決定這個順序, 可以利用 Python 的 category type
 category_frame = X.select_dtypes(include=["object", "category"])
-category_frame.head()
+encoded_df = df.copy()
+
+category_frame
 
 # %%
 encoder = ce.OrdinalEncoder(cols=category_frame.columns)
@@ -210,6 +227,7 @@ X.head()
 
 # %%
 category_column_mapping = encoder.mapping
+category_column_mapping
 
 # %% [markdown]
 # ### Split data to training and test dataset
@@ -238,7 +256,7 @@ X_train.shape, X_test.shape
 from sklearn.tree import DecisionTreeClassifier
 
 row_counts = len(X.index)
-max_depth = 10
+max_depth = analysis_depth
 min_samples_split = 0
 min_samples_leaf = 0
 
@@ -356,20 +374,28 @@ class DecisionTreePath:
     path: list[int]
     nodeLabel: dict[int, list[str]]
 
-
 # %% [markdown]
 # #### Export decision tree from model and reconstruct DecisionTreeGraph
 
 # %%
 # The analysis goal is discovering data, not just training model
 # ! re-fit the hole data (target and features, X and y), not splitted data
+
 decision_tree = clf.fit(X, y)
+
+# * Scikit-learn decision tree:
+# Using optimized version of the CART algorithm
+# Not support categorical variable for now, that is, categorical variable need to encode
+
+# * Entropy range:
+# From 0 to 1 for binary classification (target has only two classes, true or false)
+# From 0 to log base 2 k where k is the number of classes
 
 dotData = tree.export_graphviz(
     clf,
     out_file=output_file_path,
     feature_names=feature_names,
-    class_names=target_class_names,
+    class_names=target_values,
     max_depth=max_depth,
     label="all",
     rounded=True,
@@ -381,14 +407,14 @@ with open(output_file_path, "r", encoding="utf-8") as f:
 
 # Use graphviz lib to convert dot format to json format
 source = Source(dotData)
-jsonGraph = source.pipe(format="json").decode("utf-8")
-dictGraph: dict = json.loads(jsonGraph)
+json_graph = source.pipe(format="json").decode("utf-8")
+dict_graph: dict = json.loads(json_graph)
 
 # Filter needed part
 nodes = list(
     map(
         lambda o: {"id": o.get("_gvid"), "labels": o.get("label").split("\\n")},
-        dictGraph.get("objects"),
+        dict_graph.get("objects"),
     )
 )
 
@@ -403,36 +429,22 @@ edges = dict(
                 "tail": o.get("head"),
             },
         ),
-        dictGraph.get("edges"),
+        dict_graph.get("edges"),
     )
 )
-
 
 # %% [markdown]
 # #### Store information
 
 # %%
-# Information storage
-# * type is category => store unique value
-# * type is numeric => store min and max value
-# * type is datetime => store min and max value
-
-# target name -> str
-# target unique values -> []
-# feature names -> []
-# feature values -> {
-#   feature1: {
-#     type, value
-#   }
-#   ...
-# }
-analysis_information: dict[str, str or list or dict] = {}
-analysis_information["target_name"] = target
-analysis_information["target_values"] = target_class_names
-analysis_information["feature_names"] = feature_names
+data_information: dict[str, str or list or dict] = {}
+data_information["target_name"] = target
+data_information["target_values"] = target_values
+data_information["feature_names"] = feature_names
 
 # Numeric
 feature_values: dict[str, dict[str, str or list]] = {}
+
 for n in numerical_column_max_min_tuple:
     feature_values[n[0]] = {"type": "numeric", "value": [n[1], n[2]]}
 
@@ -446,26 +458,49 @@ for d in datetime_column_earliest_latest_tuple:
 
 # Category
 for c in category_column_mapping:
-    feature_values[c["col"]] = {"type": "category", "value": (c["mapping"].index.to_list())}
+    is_datetime_column = c["col"] in quantile_columns
+    feature_values[c["col"]] = {
+        "type": "datetime" if is_datetime_column else "category",
+        "value": (c["mapping"].index.to_list()),
+        "mapping": pd.Series(dict((v, k) for k, v in c["mapping"].items())),
+    }
     feature_values[c["col"]]["value"].pop()
 
-analysis_information["feature_values"] = feature_values
-# ! This is important information of analysis process
-analysis_information
+unstored_features = list(set(feature_names) - set(list(feature_values.keys())))
+
+# TODO: Custom mapping => 使用者指定 1 男, 2 女
+for f in unstored_features:
+    split_value = df[f].astype("string").unique().tolist()
+    mapping_pairs = dict((i + 1, split_value[i]) for i in range(len(split_value)))
+    mapping_pairs[-2] = "nan"
+    mapping = pd.Series(mapping_pairs)
+    feature_values[f] = {
+        "type": "category",
+        "value": split_value,
+        "mapping": mapping,
+    }
+
+data_information["feature_values"] = feature_values
+
+data_information
 
 # %% [markdown]
 # ### Decision tree path parser
 
-
 # %%
+from math import log
+
+
 def DecisionTreePathParser(graph: DecisionTreeGraph, root_id: int = 0):
     paths: list[DecisionTreePath] = []
 
     # DFS: Depth-First Search
-    def dfs(current_id: int = 0, path: list[int] = []):
+    def SearchPathByDFS(current_id: int = 0, path: list[int] = []):
         if not graph:
             return
+
         path.append(current_id)
+
         edge_values = list(map(lambda edge: DecisionTreeEdge(**edge), list(graph.edges.values())))
         outgoing_edges = list(filter(lambda edge: edge.head == current_id, edge_values))
 
@@ -474,16 +509,27 @@ def DecisionTreePathParser(graph: DecisionTreeGraph, root_id: int = 0):
             last_id = path[len(path) - 1]
             last_node = DecisionTreeNode(**(graph.nodes[last_id]))
             node_labels: dict[int, list[str]] = {}
-            # TODO: 排除 entropy 高的 path
+
+            # ! 排除 entropy 高的 path
+            entropy = float(last_node.labels[0].split(" ")[2])
+
+            if entropy > log(len(feature_names), 2) / 2:
+                path.pop()
+                return
+            # ! ####################
+
             node_labels[last_id] = last_node.labels
 
             for i in range(0, len(path) - 1):
                 node_id = path[i]
                 labels = DecisionTreeNode(**(graph.nodes[node_id])).labels
-                # 如果下一個 node id 是上個 +1 則是 true，不然的話是 false
+
+                # 如果下一個的 node id 是上一個 +1 則是 true，不然的話是 false
                 # * left edge <= => true
                 # * right edge > => false
+
                 next_id = path[i + 1]
+
                 if node_id + 1 != next_id:
                     new_labels = [*labels]
                     condition = new_labels[0]
@@ -492,6 +538,7 @@ def DecisionTreePathParser(graph: DecisionTreeGraph, root_id: int = 0):
                     new_labels[0] = " ".join(split_condition)
                     node_labels[node_id] = new_labels
                     continue
+
                 node_labels[node_id] = [*labels]
 
             paths.append(DecisionTreePath([*path], node_labels))
@@ -502,12 +549,12 @@ def DecisionTreePathParser(graph: DecisionTreeGraph, root_id: int = 0):
                 next_id = edge.tail
 
                 # 遞迴呼叫深度優先搜索
-                dfs(next_id, path)
+                SearchPathByDFS(next_id, path)
 
         # 回溯，從路徑中移除目前節點
         path.pop()
 
-    dfs(root_id)
+    SearchPathByDFS(root_id)
 
     return paths
 
@@ -519,18 +566,127 @@ print("Path counts = {}".format(len(paths)))
 # %% [markdown]
 # ### Decision tree path analyzer
 
-
 # %%
-# TODO: decision tree path analyzer
-def DecisionTreePathAnalyzer():
-    pass
+from math import ceil, floor
 
+
+def DecisionTreePathAnalyzer(paths: list[DecisionTreePath], target_values: list[str], feature_names: list[str]):
+    path_analysis_result: dict = {}
+    for split_value in target_values:
+        path_analysis_result[split_value] = []
+
+    for path in paths:
+        path_analysis_result_part = {}
+
+        for feature_name in feature_names:
+            path_analysis_result_part[feature_name] = data_information["feature_values"][feature_name]["value"].copy()
+
+        for node_id in path.path:
+            labels = path.nodeLabel[node_id][0].split(" ")
+            feature_name = labels[0]
+            split_symbol = labels[1]
+            split_value = float(labels[2])
+
+            if node_id == path.path[len(path.path) - 1]:
+                class_name = path.nodeLabel[node_id][3].split(" ")[2]
+
+                sample_value = " ".join(path.nodeLabel[node_id][2].split(" ")[2:]).split(", ")
+                sample_value[0] = sample_value[0][1:]
+                sample_value[len(sample_value) - 1] = sample_value[len(sample_value) - 1][0:-1]
+
+                path_analysis_result_part["entropy"] = float(split_value)
+                path_analysis_result_part["samples"] = list(map(lambda value: int(value), sample_value))
+                path_analysis_result_part["labels"] = target_values
+                path_analysis_result_part["class"] = class_name
+
+                path_analysis_result[class_name].append(path_analysis_result_part)
+                break
+
+            feature_type = data_information["feature_values"][labels[0]]["type"]
+            split_situation = [split_symbol, feature_type]
+
+            match split_situation:
+                case ["<=", "category"]:
+                    mapping: pd.Series = data_information["feature_values"][feature_name]["mapping"]
+                    filter_values = mapping.drop(-2).loc[1 : floor(split_value)].tolist()
+                    path_analysis_result_part[feature_name] = filter_values
+                case ["<=", "datetime"]:
+                    mapping: pd.Series = data_information["feature_values"][feature_name]["mapping"]
+                    filter_values = mapping.drop(-2).loc[1 : floor(split_value)].tolist()
+                    path_analysis_result_part[feature_name] = filter_values
+                case ["<=", "numeric"]:
+                    if split_value < path_analysis_result_part[feature_name][1]:
+                        path_analysis_result_part[feature_name][1] = split_value
+                case [">", "category"]:
+                    mapping: pd.Series = data_information["feature_values"][feature_name]["mapping"]
+                    filter_values = mapping.drop(-2).loc[ceil(split_value) :].tolist()
+                    path_analysis_result_part[feature_name] = filter_values
+                case [">", "datetime"]:
+                    mapping: pd.Series = data_information["feature_values"][feature_name]["mapping"]
+                    filter_values = mapping.drop(-2).loc[ceil(split_value) :].tolist()
+                    path_analysis_result_part[feature_name] = filter_values
+                case [">", "numeric"]:
+                    if split_value > path_analysis_result_part[feature_name][0]:
+                        path_analysis_result_part[feature_name][0] = split_value
+                case _:
+                    print("no match case")
+
+    return path_analysis_result
+
+
+path_analysis_result = DecisionTreePathAnalyzer(paths=paths, target_values=target_values, feature_names=feature_names)
+
+path_analysis_result
 
 # %% [markdown]
-# ### Path data to JSON string
+# ### Final result
 
 # %%
-paths_json_str = json.dumps(list(map(lambda path: path.__dict__, paths)))
-paths_object = json.loads(paths_json_str)
-# ! This is important path analysis result include nodes and their labels
-paths_object
+json_str = json.dumps(path_analysis_result)
+json_object = json.loads(json_str)
+
+for k in json_object:
+    print(k, len(json_object[k]))
+
+# %%
+df
+
+# %%
+X
+
+# %%
+y
+
+# %%
+data_information
+
+# %%
+print(quantile_columns)
+quantile_mapping
+
+# %%
+json_object
+
+# %% [markdown]
+# ### Tests
+
+# %%
+# encoded_df.loc[
+#     (df["教育程度類別"] == "博士")
+#     & (df["年月"] == "(2022-10-01 00:00:00, 2023-01-01 00:00:00]")
+#     & (df["信用卡交易筆數"] == "high")
+#     & (df["信用卡交易金額[新台幣]"] == "high")
+#     & (df["性別"] == 1)
+# ]
+
+# pd.DataFrame([origin_df.loc[56276], origin_df.loc[56318], origin_df.loc[56948], origin_df.loc[57620]])
+
+encoded_df.loc[
+    (df["年月"] == "(2020-04-01 00:00:00, 2020-07-01 00:00:00]")
+    & (df["教育程度類別"] == "大學")
+    & (df["信用卡交易筆數"] == "low")
+    & (df["產業別"] == "百貨")
+    & (df["信用卡交易金額[新台幣]"] == "low")
+]
+
+
