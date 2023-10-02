@@ -4,9 +4,9 @@
       "driver": "ODBC Driver 17 for SQL Server",
       "uid": "dataviz",
       "pwd": ".dataviz.",
-      "server": "10.21.24.190",
+      "server": "host.docker.internal",
       "instance": "\\SQLEXPRESS",
-      "port": 1433,
+      "port": 2433,
       "db": "RawDB"
     }
   },
@@ -15,9 +15,9 @@
       "driver": "ODBC Driver 17 for SQL Server",
       "uid": "dataviz",
       "pwd": ".dataviz.",
-      "server": "host.docker.internal",
+      "server": "10.21.24.190",
       "instance": "\\SQLEXPRESS",
-      "port": 2433,
+      "port": 1433,
       "db": "RawDB"
     }
   }
