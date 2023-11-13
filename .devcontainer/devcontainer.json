@@ -28,7 +28,8 @@
 				"ms-python.black-formatter",
 				"joaompinto.vscode-graphviz",
 				"VisualStudioExptTeam.vscodeintellicode",
-				"VisualStudioExptTeam.intellicode-api-usage-examples"
+				"VisualStudioExptTeam.intellicode-api-usage-examples",
+				"TabNine.tabnine-vscode"
 			]
 		}
 	},
