@@ -5,34 +5,37 @@ import pandas as pd
 from flask_cors import CORS
 from pandas.core.api import DataFrame
 
+from db import create_db_engine
 from flask import Flask, request
-from setup import setup
 
 server = Flask(__name__)
 CORS(server)
 
-# * Solve error
-# urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed:
-# self-signed certificate in certificate chain (_ssl.c:xxxx)>
+# ! urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed:
+# ! self-signed certificate in certificate chain (_ssl.c:xxxx)>
 ssl._create_default_https_context = ssl._create_unverified_context
 
-db = setup()
+db = create_db_engine()
 
 
-def data_to_sql(data: DataFrame, lastID="0"):
+def data_to_sql(data: DataFrame, dataId):
+    if not dataId:
+        print("dataId is not valid")
+        return
+
     df = pd.DataFrame(data)
-    df.to_sql("D" + lastID, db, if_exists="replace", index=False, schema="dbo")
+    df.to_sql("D" + dataId, db, if_exists="replace", index=False, schema="dbo")
 
 
-# * Argument: form data
+# * Form data
 # * form:
-#   lastID
+#   dataId
 #   url
 # * files:
 #   file
-@server.route("/api/upload", methods=["POST"])
-def upload_router():
-    lastID = request.form["lastID"]
+@server.route("/api/file_upload", methods=["POST"])
+def file_upload():
+    dataId = request.form["dataId"]
     if request.files:
         csvFile = request.files["file"]
         tempFile = tempfile.NamedTemporaryFile(delete=False)
@@ -40,18 +43,28 @@ def upload_router():
         with open(tempFile.name, "rb") as f:
             data = pd.read_csv(f, encoding="utf-8", encoding_errors="ignore")
             print(data)
-            data_to_sql(data, lastID)
+            data_to_sql(data, dataId)
     elif request.form["url"]:
         url = request.form["url"]
         data = pd.read_csv(url, encoding="utf-8", encoding_errors="ignore")
         print(data)
-        data_to_sql(data, lastID)
+        data_to_sql(data, dataId)
 
     return "upload successfully"
 
 
-@server.route("/api/analysis", methods=["GET"])
-def analysis():
+@server.route("/api/get_column_types", methods=["GET"])
+def get_column_types():
+    pass
+
+
+@server.route("/api/path_analysis", methods=["GET"])
+def path_analysis():
+    pass
+
+
+@server.route("/api/pivot_analysis", methods=["GET"])
+def pivot_analysis():
     pass
 
 
