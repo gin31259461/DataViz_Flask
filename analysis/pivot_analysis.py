@@ -5,7 +5,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-AggMethodType = Literal["sum", "mean"]
+AggMethodType = Literal["sum", "mean", "count"]
 agg_func = {"sum": np.sum, "mean": np.mean}
 
 
@@ -40,11 +40,14 @@ class PivotAnalysis:
         self.focus_index = focus_index
 
         self.pivoted_table = None
-        self.proccess_result = None
+        self.process_result = None
+        self.process_index_value_counts = None
+        self.index_value_counts = None
 
     def process_pivot_data(self, process: list[list[str, list[str]]], target: str):
         # [[before, after], [...], [...], ...]
-        self.proccess_result = []
+        self.process_result = []
+        self.process_index_value_counts = []
 
         for p in process:
             column = p[0]
@@ -55,16 +58,39 @@ class PivotAnalysis:
             self.focus_index = None
 
             self.start_pivot_table()
-            before_focus_index = self.to_single_data()
+            before_focus_index = self.to_grouped_data()
+            before_index_value_counts = self.index_value_counts
             # self.print_pivoted_table()
 
             self.focus_index = values
 
             self.start_pivot_table()
-            after_focus_index = self.to_single_data()
+            after_focus_index = self.to_grouped_data()
+            after_index_value_counts = self.index_value_counts
             # self.print_pivoted_table()
 
-            self.proccess_result.append([before_focus_index, after_focus_index])
+            self.process_result.append([before_focus_index, after_focus_index])
+
+            self.process_index_value_counts.append(
+                [
+                    [
+                        {
+                            "name": before_index_value_counts.index.name + " " + before_index_value_counts.name,
+                            "label": v,
+                            "value": before_index_value_counts[v],
+                        }
+                        for v in before_index_value_counts.index.tolist()
+                    ],
+                    [
+                        {
+                            "name": after_index_value_counts.index.name + " " + after_index_value_counts.name,
+                            "label": v,
+                            "value": after_index_value_counts[v],
+                        }
+                        for v in after_index_value_counts.index.tolist()
+                    ],
+                ]
+            )
 
     # agg : aggregate 聚合
     def start_pivot_table(self, agg_method: list[AggMethodType] = ["sum"]):
@@ -74,6 +100,7 @@ class PivotAnalysis:
         if self.focus_index is not None:
             self.data = self.data[self.data[self.index].isin(self.focus_index)]
 
+        # main pivot
         if self.columns is None:
             pivoted_table = self.data.pivot_table(
                 index=self.index, values=self.values, aggfunc=list(map(lambda m: agg_func[m], agg_method))
@@ -93,6 +120,8 @@ class PivotAnalysis:
 
         self.pivoted_table = pivoted_table
 
+        self.index_value_counts = self.data[self.index].value_counts()
+
     def print_pivoted_table(self):
         if self.pivoted_table is None:
             print("pivoted_table is None, please run start_pivot_table first.")
@@ -102,6 +131,10 @@ class PivotAnalysis:
             "display.max_rows", None, "display.max_columns", None, "display.float_format", "{:2f}".format
         ):  # more options can be specified also
             print(self.pivoted_table.to_markdown(floatfmt=".2f"), end="\n\n")
+
+    def print_pivot_results(self):
+        self.print_pivoted_table()
+        print(self.index_value_counts)
 
     def to_json(self):
         return self.pivoted_table.to_json()

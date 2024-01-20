@@ -557,7 +557,11 @@ class PathAnalysis:
         self.result = self.decision_tree_path_analyzer(paths)
 
         # convert remaining object columns to category columns
+        # save column values
+        self.column_values = {}
+
         for column in self.analysis_df.columns.tolist():
+            self.column_values[column] = self.train_df[column].unique().tolist()
             if self.analysis_df[column].dtype == "object":
                 self.analysis_df[column] = self.analysis_df[column].astype("category")
 
