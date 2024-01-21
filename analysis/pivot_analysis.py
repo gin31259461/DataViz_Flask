@@ -2,11 +2,9 @@ import json
 from dataclasses import dataclass
 from typing import Literal
 
-import numpy as np
 import pandas as pd
 
 AggMethodType = Literal["sum", "mean", "count"]
-agg_func = {"sum": np.sum, "mean": np.mean}
 
 
 @dataclass
@@ -103,20 +101,27 @@ class PivotAnalysis:
         # main pivot
         if self.columns is None:
             pivoted_table = self.data.pivot_table(
-                index=self.index, values=self.values, aggfunc=list(map(lambda m: agg_func[m], agg_method))
+                index=self.index,
+                values=self.values,
+                aggfunc=agg_method,
+                observed=True,
             )
         else:
             pivoted_table = self.data.pivot_table(
-                index=self.index, values=self.values, columns=self.columns, aggfunc=agg_func[agg_method[0]]
+                index=self.index,
+                values=self.values,
+                columns=self.columns,
+                aggfunc=[agg_method[0]],
+                observed=True,
             )
 
         if self.focus_columns is not None:
             pivoted_table = pivoted_table[self.focus_columns]
 
-        if self.focus_index is not None:
-            pivoted_table = pivoted_table.drop(
-                list(filter(lambda index: index not in self.focus_index, pivoted_table.index)), axis=0
-            )
+        # if self.focus_index is not None:
+        #     pivoted_table = pivoted_table.drop(
+        #         list(filter(lambda index: index not in self.focus_index, pivoted_table.index)), axis=0
+        #     )
 
         self.pivoted_table = pivoted_table
 

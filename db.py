@@ -17,5 +17,5 @@ def create_db_engine():
     pno = conf["port"]
     db = conf["db"]
     str = f"mssql+pyodbc://{uid}:{pwd}@{srv}{ins}:{pno}/{db}?driver={drv}"
-    db = create_engine(str, fast_executemany=True)
-    return db
+    db_engine = create_engine(str, fast_executemany=True)
+    return db_engine

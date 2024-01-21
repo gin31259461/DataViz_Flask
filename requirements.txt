@@ -1,4 +1,10 @@
-category_encoders
-flask_cors
+pandas
+numpy
+category-encoders
+scikit-learn
+flask-cors
 graphviz
+sqlalchemy
 alive-progress
+pyodbc
+tabulate

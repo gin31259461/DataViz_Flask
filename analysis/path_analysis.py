@@ -15,7 +15,7 @@ from sqlalchemy import text
 
 from db import create_db_engine
 
-db = create_db_engine()
+db_engine = create_db_engine()
 
 
 @dataclass
@@ -121,18 +121,19 @@ class PathAnalysis:
             print("all done!")
 
     def fetch_data_from_db(self):
-        query = text("SELECT CName FROM [DV].[dbo].[Object] where OID = :OID")
-        object_table = db.execute(query, OID=self.dataId).fetchall()
+        with db_engine.connect() as connection:
+            query = text("SELECT CName FROM [DV].[dbo].[Object] where OID = :OID")
+            object_table = connection.execute(query, {"OID": self.dataId}).fetchall()
 
-        self.data_name = pd.DataFrame(object_table)["CName"][0]
+            self.data_name = pd.DataFrame(object_table)["CName"][0]
 
-        query = text(f"SELECT * FROM [RawDB].[dbo].[D{self.dataId}]")
-        data = db.execute(query).fetchall()
+            query = text(f"SELECT * FROM [RawDB].[dbo].[D{self.dataId}]")
+            data = connection.execute(query).fetchall()
 
-        self.train_df = pd.DataFrame(data)
-        self.origin_df = self.train_df.copy()
-        self.analysis_df = self.train_df.copy()
-        self.column_names = self.train_df.columns.tolist()
+            self.train_df = pd.DataFrame(data)
+            self.origin_df = self.train_df.copy()
+            self.analysis_df = self.train_df.copy()
+            self.column_names = self.train_df.columns.tolist()
 
     def pre_define_column_types(self):
         for column in self.column_types.keys():
