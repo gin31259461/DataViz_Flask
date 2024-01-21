@@ -34,7 +34,8 @@ process = path.result["high"][0]["process"]
 for i in range(len(pivot.process_result)):
     print("")
     print(process[i])
-    # print(pivot.process_result[i][0])
-    # print(pivot.process_result[i][1])
-    # print(pivot.process_index_value_counts[i][0])
-    # print(pivot.process_index_value_counts[i][1])
+
+    print(pivot.process_result[i][0])
+    print(pivot.process_result[i][1])
+    print(pivot.process_index_value_counts[i][0])
+    print(pivot.process_index_value_counts[i][1])

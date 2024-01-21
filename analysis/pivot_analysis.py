@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
+from tabulate import tabulate
 
 AggMethodType = Literal["sum", "mean", "count"]
 
@@ -118,12 +119,17 @@ class PivotAnalysis:
         if self.focus_columns is not None:
             pivoted_table = pivoted_table[self.focus_columns]
 
-        # if self.focus_index is not None:
-        #     pivoted_table = pivoted_table.drop(
-        #         list(filter(lambda index: index not in self.focus_index, pivoted_table.index)), axis=0
-        #     )
-
-        self.pivoted_table = pivoted_table
+        # 如果 index 是 year, month, day 則重新排序
+        if (
+            pivoted_table.index.name == "year"
+            or pivoted_table.index.name == "month"
+            or pivoted_table.index.name == "day"
+        ):
+            self.pivoted_table = pivoted_table.reindex(
+                index=pivoted_table.index.to_series().astype(int).sort_values().index
+            )
+        else:
+            self.pivoted_table = pivoted_table
 
         self.index_value_counts = self.data[self.index].value_counts()
 
@@ -132,10 +138,22 @@ class PivotAnalysis:
             print("pivoted_table is None, please run start_pivot_table first.")
             return
 
-        with pd.option_context(
-            "display.max_rows", None, "display.max_columns", None, "display.float_format", "{:2f}".format
-        ):  # more options can be specified also
-            print(self.pivoted_table.to_markdown(floatfmt=".2f"), end="\n\n")
+        # with pd.option_context(
+        #     "display.max_rows",
+        #     None,
+        #     "display.max_columns",
+        #     None,
+        #     "display.float_format",
+        #     "{:.2f}".format,
+        #     "display.width",
+        #     None,
+        #     "display.unicode.ambiguous_as_wide",
+        #     True,
+        #     "display.unicode.east_asian_width",
+        #     True,
+        # ):
+
+        print(tabulate(self.pivoted_table, headers="keys", tablefmt="github", floatfmt=",.2f"), end="\n\n")
 
     def print_pivot_results(self):
         self.print_pivoted_table()
