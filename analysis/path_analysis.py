@@ -1,7 +1,7 @@
+import datetime
 import json
 import time
 from dataclasses import dataclass
-from datetime import datetime
 from math import ceil, floor, log, nan
 from typing import Tuple, Type
 
@@ -360,6 +360,8 @@ class PathAnalysis:
         clf.fit(self.X, self.y)
 
         self.clf = clf
+        self.feature_names_in_ = clf.feature_names_in_.tolist()
+        self.feature_importances_ = clf.feature_importances_.tolist()
 
         # feature_importance = clf.feature_importances_
         # feature_importance_pairs = list(zip(self.feature_names, feature_importance))
@@ -567,8 +569,16 @@ class PathAnalysis:
                 self.analysis_df[column] = self.analysis_df[column].astype("category")
 
     def print_result_summary(self):
+        print("")
+        print("paths".ljust(20), "--> ", end="")
+
         for label in self.result:
-            print(f"{label}: {len(self.result[label])}")
+            print(f"{label}: {len(self.result[label])} ", end="")
+
+        print("")
+        print("feature name in".ljust(20), "-->", self.feature_names_in_)
+        print("feature impotances".ljust(20), "-->", self.feature_importances_)
+        print("")
 
     def save_analysis_information(self):
         analysis_information: dict = {}
