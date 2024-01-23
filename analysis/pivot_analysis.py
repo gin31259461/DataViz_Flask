@@ -40,13 +40,11 @@ class PivotAnalysis:
 
         self.pivoted_table = None
         self.process_result = None
-        self.process_index_value_counts = None
         self.index_value_counts = None
 
     def process_pivot_data(self, process: list[list[str, list[str]]], target: str):
-        # [[before, after], [...], [...], ...]
+        # [[before_focus, after_focus, before_count, after_count], [...], [...], ...]
         self.process_result = []
-        self.process_index_value_counts = []
 
         for p in process:
             column = p[0]
@@ -68,10 +66,10 @@ class PivotAnalysis:
             after_index_value_counts = self.index_value_counts
             # self.print_pivoted_table()
 
-            self.process_result.append([before_focus_index, after_focus_index])
-
-            self.process_index_value_counts.append(
+            self.process_result.append(
                 [
+                    before_focus_index,
+                    after_focus_index,
                     [
                         {
                             "name": before_index_value_counts.index.name + " " + before_index_value_counts.name,
@@ -137,21 +135,6 @@ class PivotAnalysis:
         if self.pivoted_table is None:
             print("pivoted_table is None, please run start_pivot_table first.")
             return
-
-        # with pd.option_context(
-        #     "display.max_rows",
-        #     None,
-        #     "display.max_columns",
-        #     None,
-        #     "display.float_format",
-        #     "{:.2f}".format,
-        #     "display.width",
-        #     None,
-        #     "display.unicode.ambiguous_as_wide",
-        #     True,
-        #     "display.unicode.east_asian_width",
-        #     True,
-        # ):
 
         print(tabulate(self.pivoted_table, headers="keys", tablefmt="github", floatfmt=",.2f"), end="\n\n")
 

@@ -14,29 +14,21 @@ path = PathAnalysis(
     target="信用卡交易金額[新台幣]",
 )
 path.analysis_pipeline()
-print("")
-path.print_result_summary()
+path.column_values
+process = path.result["high"][0]["process"]
+
+print(path.result["high"][0]["features"])
 
 # * pivot analysis
 
-# pivot = PivotAnalysis(path.origin_df, index="地區", values="信用卡交易金額[新台幣]")
-# pivot.start_pivot_table(agg_method=["mean"])
-# pivot.print_pivot_results()
 
 pivot = PivotAnalysis(path.analysis_df)
-pivot.process_pivot_data(path.result["high"][0]["process"], path.target)
+pivot.process_pivot_data(process, path.target)
 
 # * debugging
 # 分析出來的低中高是沒有經過彙總的，也就是說是某些特定的 feature 組合會有 target 的低中高 label
 # 路徑分析是初步分析及篩選合適的欄位給樞紐分析使用，主軸還是放在樞紐分析上面
 
-# process = path.result["high"][0]["process"]
-# for i in range(len(pivot.process_result)):
-#     print("")
-#     print(process[i])
-# print(path.column_values)
 
-# print(pivot.process_result[i][0])
-# print(pivot.process_result[i][1])
-# print(pivot.process_index_value_counts[i][0])
-# print(pivot.process_index_value_counts[i][1])
+for p in pivot.process_result:
+    print(p)

@@ -2,11 +2,11 @@ import ssl
 import tempfile
 
 import pandas as pd
+from flask import Flask, request
 from flask_cors import CORS
 from pandas.core.api import DataFrame
 
 from db import create_db_engine
-from flask import Flask, request
 
 server = Flask(__name__)
 CORS(server)
@@ -18,13 +18,13 @@ ssl._create_default_https_context = ssl._create_unverified_context
 db = create_db_engine()
 
 
-def data_to_sql(data: DataFrame, dataId):
-    if not dataId:
+def data_to_sql(data: DataFrame, name: str):
+    if not name:
         print("dataId is not valid")
         return
 
     df = pd.DataFrame(data)
-    df.to_sql("D" + dataId, db, if_exists="replace", index=False, schema="dbo")
+    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo")
 
 
 # * Form data
@@ -43,12 +43,12 @@ def file_upload():
         with open(tempFile.name, "rb") as f:
             data = pd.read_csv(f, encoding="utf-8", encoding_errors="ignore")
             print(data)
-            data_to_sql(data, dataId)
+            data_to_sql(data, "D" + dataId)
     elif request.form["url"]:
         url = request.form["url"]
         data = pd.read_csv(url, encoding="utf-8", encoding_errors="ignore")
         print(data)
-        data_to_sql(data, dataId)
+        data_to_sql(data, "D" + dataId)
 
     return "upload successfully"
 

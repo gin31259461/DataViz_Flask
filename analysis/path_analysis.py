@@ -2,7 +2,7 @@ import datetime
 import json
 import time
 from dataclasses import dataclass
-from math import ceil, floor, log, nan
+from math import ceil, floor, nan
 from typing import Tuple, Type
 
 import category_encoders as ce
@@ -12,6 +12,7 @@ from graphviz import Source
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 from sqlalchemy import text
+from tabulate import tabulate
 
 from db import create_db_engine
 
@@ -62,63 +63,67 @@ class PathAnalysis:
         self.target = target
 
         self.max_depth = 50
+        self.entropy_threshold = 0.1
         self.datetime_columns = []
         self.quantile_labels = ["low", "middle", "high"]
 
     def analysis_pipeline(self):
         with alive_bar(10) as bar:
-            print(f"fetcing data from database with data id : {self.dataId}")
+            print(f"Fetcing data from database with data id = {self.dataId}")
             self.fetch_data_from_db()
             time.sleep(0.001)
             bar()
 
-            print("defining column types...")
+            print("Define column types...")
             self.pre_define_column_types()
             time.sleep(0.001)
             bar()
 
-            print("search numerical column...")
+            print("Search numerical column...")
             self.search_numerical_column()
             time.sleep(0.001)
             bar()
 
-            print("search datetime column...")
+            print("Search datetime column...")
             self.search_datetime_column()
             time.sleep(0.001)
             bar()
 
-            print("transform datetime column...")
+            print("Transform datetime column...")
             self.transform_datetime_column()
             time.sleep(0.001)
             bar()
 
-            print("transform concept hierarchy...")
+            print("Transform concept hierarchy...")
             self.transform_concept_hierarchy()
             time.sleep(0.001)
             bar()
 
-            print("prepare data to fit model...")
+            print("Prepare data to fit model...")
             self.prepare_data_to_fit()
             time.sleep(0.001)
             bar()
 
-            print("encoding columns...")
+            print("Encode columns...")
             self.encode_category_column()
             time.sleep(0.001)
             bar()
 
-            print("fitting decision tree model...")
+            print("Fitting decision tree model...")
             self.fit_decision_tree_model()
             time.sleep(0.001)
             bar()
 
-            print("saving analysis result...")
+            print("Saving analysis result...")
             self.save_analysis_information()
             self.save_result()
             time.sleep(0.001)
             bar()
 
-            print("all done!")
+            print("All done!")
+
+        self.print_result_summary()
+        self.print_analysis_table()
 
     def fetch_data_from_db(self):
         with db_engine.connect() as connection:
@@ -244,39 +249,25 @@ class PathAnalysis:
             datetime_freq_manifest = ["year", "quarter", "month"]
             freq_manifest = ["YS", "QS", "MS"]
             freq_mapping = pd.Series(data=freq_manifest, index=datetime_freq_manifest)
-            datetime_freq_entropy = []
 
             for datetime_freq in datetime_freq_manifest:
                 datetime_manifest: Type[pd.DatetimeIndex] = pd.date_range(
                     start=tuple[1], end=tuple[2], freq=freq_mapping[datetime_freq]
                 )
                 datetime_manifest = datetime_manifest.union([tuple[2]])
-                labels = self.fill_label(datetime_freq, datetime_manifest)
+                labels = self.fill_datetime_label(datetime_freq, datetime_manifest)
                 discrete_datetime_series = pd.Series(
                     pd.cut(
                         self.train_df[col], bins=datetime_manifest, labels=labels, include_lowest=True, ordered=False
                     )
                 )
 
-                feature_entropy = self.count_feature_gain(feature_name=col)
-                datetime_freq_entropy.append(feature_entropy)
-
-            # difference_mean = 0
-
-            # for i in range(1, len(datetime_freq_entropy)):
-            #     difference_mean += abs(datetime_freq_entropy[i] - datetime_freq_entropy[i - 1])
-
-            # difference_mean /= len(datetime_freq_entropy)
-
-            # best_index = datetime_freq_entropy.index(min(datetime_freq_entropy))
-            # best_freq = datetime_freq_manifest[best_index] if difference_mean > 0.01 else "year"
-
             for freq in datetime_freq_manifest:
                 datetime_manifest: Type[pd.DatetimeIndex] = pd.date_range(
                     start=tuple[1], end=tuple[2], freq=freq_mapping[freq]
                 )
                 datetime_manifest = datetime_manifest.union([tuple[2]])
-                labels = self.fill_label(freq, datetime_manifest)
+                labels = self.fill_datetime_label(freq, datetime_manifest)
 
                 quantile_interval = pd.cut(self.train_df[col], bins=datetime_manifest, include_lowest=True)
                 self.quantile_mapping[col] = pd.Series(
@@ -317,7 +308,6 @@ class PathAnalysis:
             print("Column of target or skip features are not exist in data frame")
 
         self.X = X
-        self.feature_names = X.columns.tolist()
         self.y = self.train_df[self.target].astype("string")
 
     def encode_category_column(self):
@@ -360,13 +350,8 @@ class PathAnalysis:
         clf.fit(self.X, self.y)
 
         self.clf = clf
-        self.feature_names_in_ = clf.feature_names_in_.tolist()
+        self.feature_names = clf.feature_names_in_.tolist()
         self.feature_importances_ = clf.feature_importances_.tolist()
-
-        # feature_importance = clf.feature_importances_
-        # feature_importance_pairs = list(zip(self.feature_names, feature_importance))
-        # feature_importance_pairs.sort(key=lambda pair: pair[1], reverse=True)
-        # print(feature_importance_pairs)
 
     def search_decision_tree_path(self, graph: DecisionTreeGraph, root_id: int = 0):
         paths: list[DecisionTreePath] = []
@@ -390,7 +375,7 @@ class PathAnalysis:
                 # ! 排除 entropy 高的 path
                 entropy = float(last_node.labels[0].split(" ")[2])
 
-                if entropy > 0.1:
+                if entropy > self.entropy_threshold:
                     path.pop()
                     return
                 # ! #####################
@@ -576,7 +561,7 @@ class PathAnalysis:
             print(f"{label}: {len(self.result[label])} ", end="")
 
         print("")
-        print("feature name in".ljust(20), "-->", self.feature_names_in_)
+        print("feature name in".ljust(20), "-->", self.feature_names)
         print("feature impotances".ljust(20), "-->", self.feature_importances_)
         print("")
 
@@ -628,30 +613,7 @@ class PathAnalysis:
         analysis_information["feature_values"] = feature_series
         self.analysis_information = analysis_information
 
-    def count_feature_gain(self, feature_name: str):
-        part_df = pd.DataFrame(columns=[feature_name, self.target])
-        part_df[feature_name] = self.train_df[feature_name].astype("str")
-        part_df[self.target] = self.train_df[self.target]
-
-        # Quantity of S
-        total_quantity = len(part_df)
-        class_quantity = len(part_df[self.target].unique())
-        gain = 0
-
-        for value in part_df[feature_name].dropna().unique().tolist():
-            # Filter target attribute correspond the value of target
-            value_df = part_df.loc[part_df[feature_name] == value]
-            value_quantity = len(value_df)
-            target_value_counts = value_df[self.target].value_counts().values.tolist()
-            H_sv = 0
-            for value_count in target_value_counts:
-                if value_count != 0:
-                    H_sv += -(value_count / value_quantity) * log(value_count / value_quantity, class_quantity)
-            gain += value_quantity / total_quantity * H_sv
-
-        return gain
-
-    def fill_label(self, freq: str, datetime_manifest: Type[pd.DatetimeIndex]):
+    def fill_datetime_label(self, freq: str, datetime_manifest: Type[pd.DatetimeIndex]):
         labels: list[str] = []
 
         match freq:
@@ -698,27 +660,8 @@ class PathAnalysis:
 
         return labels
 
-    def count_target_entropy(self):
-        total_quantity = len(self.train_df[self.target])
-        class_value_quantity = len(self.train_df[self.target].unique())
-        H_s = [
-            -(target_value / total_quantity) * log(target_value / total_quantity, class_value_quantity)
-            for target_value in self.train_df[self.target].value_counts().values.tolist()
-        ]
-        entropy = sum(H_s)
-        return entropy
-
-    def print_columns(self):
-        print(self.column_names)
-
-    def result_to_json(self):
-        return json.dumps(self.result, indent=4)
-
     def print_analysis_table(self):
-        with pd.option_context(
-            "display.max_rows", None, "display.max_columns", None, "display.float_format", "{:2f}".format
-        ):  # more options can be specified also
-            if self.analysis_df.size > 10:
-                print(self.analysis_df[0:10].to_markdown(floatfmt=".2f"), end="\n\n")
-            else:
-                print(self.analysis_df.to_markdown(floatfmt=".2f"), end="\n\n")
+        if self.analysis_df.size > 10:
+            print(tabulate(self.analysis_df[0:10], floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
+        else:
+            print(tabulate(self.analysis_df, floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
