@@ -3,7 +3,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
+from sqlalchemy import text
+from sqlalchemy.exc import ResourceClosedError
 from tabulate import tabulate
+
+from db import create_db_engine
 
 AggMethodType = Literal["sum", "mean", "count"]
 
@@ -24,14 +28,20 @@ class GroupedChartInstance:
 class PivotAnalysis:
     def __init__(
         self,
-        data: pd.DataFrame,
+        data: pd.DataFrame = None,
+        dataId: int = None,
         index=None,
         values=None,
         columns=None,
         focus_columns: list[str] = None,
         focus_index=None,
     ) -> None:
-        self.data = data
+        if data is None and dataId is not None:
+            self.dataId = dataId
+            self.fetch_data_from_db()
+        else:
+            self.data = data
+
         self.index = index
         self.values = values
         self.columns = columns
@@ -41,6 +51,24 @@ class PivotAnalysis:
         self.pivoted_table = None
         self.process_result = None
         self.index_value_counts = None
+
+    def fetch_data_from_db(self):
+        db_engine = create_db_engine()
+
+        with db_engine.connect() as connection:
+            query = text(
+                "IF (EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES"
+                + f" WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'A{self.dataId}'))"
+                + f"BEGIN SELECT * FROM [RawDB].[dbo].[A{self.dataId}] END "
+            )
+            cursor_result = connection.execute(query)
+
+            try:
+                data = cursor_result.fetchall()
+                self.data = pd.DataFrame(data)
+            except ResourceClosedError:
+                print("analysis table of specified dataId not found, please try to run path analysis first.")
+                self.data = None
 
     def process_pivot_data(self, process: list[list[str, list[str]]], target: str):
         # [[before_focus, after_focus, before_count, after_count], [...], [...], ...]
@@ -59,6 +87,8 @@ class PivotAnalysis:
             before_index_value_counts = self.index_value_counts
             # self.print_pivoted_table()
 
+            # ! 在指定 focus index 之後，樞紐分析會排除掉 focus index 以外的 index，所以在圖表呈現的時候會少了這些被排除掉的 index
+            # ! 也就是切割後的圖表只會呈現 focus index 中的 index
             self.focus_index = values
 
             self.start_pivot_table()

@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from pandas import DataFrame
+from sqlalchemy import Engine, create_engine
 
 
 def create_db_engine():
@@ -19,3 +20,12 @@ def create_db_engine():
     str = f"mssql+pyodbc://{uid}:{pwd}@{srv}{ins}:{pno}/{db}?driver={drv}"
     db_engine = create_engine(str, fast_executemany=True)
     return db_engine
+
+
+def data_to_sql(db: Engine, data: DataFrame, name: str):
+    if not name:
+        print("dataId is not valid")
+        return
+
+    df = DataFrame(data)
+    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo")

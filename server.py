@@ -4,9 +4,8 @@ import tempfile
 import pandas as pd
 from flask import Flask, request
 from flask_cors import CORS
-from pandas.core.api import DataFrame
 
-from db import create_db_engine
+from db import create_db_engine, data_to_sql
 
 server = Flask(__name__)
 CORS(server)
@@ -16,15 +15,6 @@ CORS(server)
 ssl._create_default_https_context = ssl._create_unverified_context
 
 db = create_db_engine()
-
-
-def data_to_sql(data: DataFrame, name: str):
-    if not name:
-        print("dataId is not valid")
-        return
-
-    df = pd.DataFrame(data)
-    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo")
 
 
 # * Form data
@@ -53,8 +43,8 @@ def file_upload():
     return "upload successfully"
 
 
-@server.route("/api/get_column_types", methods=["GET"])
-def get_column_types():
+@server.route("/api/get_columns", methods=["GET"])
+def get_columns():
     pass
 
 

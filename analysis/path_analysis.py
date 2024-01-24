@@ -2,7 +2,7 @@ import datetime
 import json
 import time
 from dataclasses import dataclass
-from math import ceil, floor, nan
+from math import ceil, floor, log, nan
 from typing import Tuple, Type
 
 import category_encoders as ce
@@ -15,8 +15,6 @@ from sqlalchemy import text
 from tabulate import tabulate
 
 from db import create_db_engine
-
-db_engine = create_db_engine()
 
 
 @dataclass
@@ -126,6 +124,8 @@ class PathAnalysis:
         self.print_analysis_table()
 
     def fetch_data_from_db(self):
+        db_engine = create_db_engine()
+
         with db_engine.connect() as connection:
             query = text("SELECT CName FROM [DV].[dbo].[Object] where OID = :OID")
             object_table = connection.execute(query, {"OID": self.dataId}).fetchall()
@@ -249,6 +249,8 @@ class PathAnalysis:
             datetime_freq_manifest = ["year", "quarter", "month"]
             freq_manifest = ["YS", "QS", "MS"]
             freq_mapping = pd.Series(data=freq_manifest, index=datetime_freq_manifest)
+            # ! validate entropy
+            datetime_freq_entropy = []
 
             for datetime_freq in datetime_freq_manifest:
                 datetime_manifest: Type[pd.DatetimeIndex] = pd.date_range(
@@ -280,6 +282,16 @@ class PathAnalysis:
                     )
                 )
                 self.analysis_df[freq] = self.train_df[freq]
+
+                # ! validate entropy
+                feature_entropy = self.count_feature_gain(feature_name=freq)
+                datetime_freq_entropy.append(feature_entropy)
+
+            # ! validate entropy test
+            print(f"Original target entropy: {self.count_target_entropy()}")
+            print(f"年月 entropy: {self.count_feature_gain('年月')}")
+            print(datetime_freq_manifest)
+            print(datetime_freq_entropy)
 
             self.skip_features.append(col)
             self.datetime_columns = datetime_columns
@@ -659,6 +671,39 @@ class PathAnalysis:
                 pass
 
         return labels
+
+    def count_target_entropy(self):
+        total_quantity = len(self.train_df[self.target])
+        class_value_quantity = len(self.train_df[self.target].unique())
+        H_s = [
+            -(target_value / total_quantity) * log(target_value / total_quantity, class_value_quantity)
+            for target_value in self.train_df[self.target].value_counts().values.tolist()
+        ]
+        entropy = sum(H_s)
+        return entropy
+
+    def count_feature_gain(self, feature_name: str):
+        part_df = pd.DataFrame(columns=[feature_name, self.target])
+        part_df[feature_name] = self.train_df[feature_name].astype("str")
+        part_df[self.target] = self.train_df[self.target]
+
+        # Quantity of S
+        total_quantity = len(part_df)
+        class_quantity = len(part_df[self.target].unique())
+        gain = 0
+
+        for value in part_df[feature_name].dropna().unique().tolist():
+            # Filter target attribute correspond the value of target
+            value_df = part_df.loc[part_df[feature_name] == value]
+            value_quantity = len(value_df)
+            target_value_counts = value_df[self.target].value_counts().values.tolist()
+            H_sv = 0
+            for value_count in target_value_counts:
+                if value_count != 0:
+                    H_sv += -(value_count / value_quantity) * log(value_count / value_quantity, class_quantity)
+            gain += value_quantity / total_quantity * H_sv
+
+        return gain
 
     def print_analysis_table(self):
         if self.analysis_df.size > 10:

@@ -1,5 +1,6 @@
 from analysis.path_analysis import PathAnalysis
 from analysis.pivot_analysis import PivotAnalysis
+from db import create_db_engine, data_to_sql
 
 # * path analysis
 
@@ -14,15 +15,18 @@ path = PathAnalysis(
     target="信用卡交易金額[新台幣]",
 )
 path.analysis_pipeline()
-path.column_values
-process = path.result["high"][0]["process"]
 
-print(path.result["high"][0]["features"])
+# * save analysis table
+
+db = create_db_engine()
+data_to_sql(db, path.analysis_df, "A" + str(path.dataId))
 
 # * pivot analysis
 
+process = path.result["high"][0]["process"]
+# print(path.result["high"][0]["features"])
 
-pivot = PivotAnalysis(path.analysis_df)
+pivot = PivotAnalysis(dataId=769)
 pivot.process_pivot_data(process, path.target)
 
 # * debugging
@@ -32,3 +36,4 @@ pivot.process_pivot_data(process, path.target)
 
 for p in pivot.process_result:
     print(p)
+    print("")
