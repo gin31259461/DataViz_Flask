@@ -1,0 +1,10 @@
+GET http://10.22.22.97:3090/api/get_data_info?dataId=769
+
+###
+
+GET http://10.22.22.97:3090/api/path_analysis?dataId=769&target=信用卡交易金額[新台幣]&concept_hierarchy={"\u6559\u80b2\u7a0b\u5ea6\u985e\u5225": {"hierarchy": {"\u9ad8\u4e2d\u4ee5\u4e0b": ["\u9ad8\u4e2d\u9ad8\u8077", "\u5176\u4ed6"], "\u5927\u5c08": ["\u5c08\u79d1", "\u5927\u5b78"], "\u7814\u7a76\u6240": ["\u78a9\u58eb", "\u535a\u58eb"]}, "order": ["\u9ad8\u4e2d\u4ee5\u4e0b", "\u5927\u5c08", "\u7814\u7a76\u6240"]}}
+
+###
+
+GET http://10.22.22.97:3090/api/process_pivot_analysis?dataId=769&target=信用卡交易金額[新台幣]&process=[["\u4fe1\u7528\u5361\u4ea4\u6613\u7b46\u6578", ["middle", "high"]], ["\u4fe1\u7528\u5361\u4ea4\u6613\u7b46\u6578", ["middle"]], ["\u5730\u5340", ["\u81fa\u5317\u5e02"]], ["\u7522\u696d\u5225", ["\u6587\u6559\u5eb7\u6a02", "\u767e\u8ca8", "\u5176\u4ed6"]], ["\u6559\u80b2\u7a0b\u5ea6\u985e\u5225", ["\u9ad8\u4e2d\u4ee5\u4e0b", "\u5927\u5c08"]], ["month", ["6", "7", "8", "9", "10", "11", "12"]]]
+

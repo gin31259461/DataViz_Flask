@@ -9,3 +9,4 @@ alive-progress
 pyodbc
 tabulate
 wcwidth
+pyarrow

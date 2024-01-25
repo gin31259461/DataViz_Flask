@@ -11,10 +11,8 @@ from alive_progress import alive_bar
 from graphviz import Source
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
-from sqlalchemy import text
+from sqlalchemy import Engine, text
 from tabulate import tabulate
-
-from db import create_db_engine
 
 
 @dataclass
@@ -48,11 +46,13 @@ class PathAnalysis:
         self,
         dataId: int,
         skip_features: list[str] = [],
+        db: Engine = None,
         datetime_format: str = None,
         concept_hierarchy: dict = None,
         column_types: dict = {},
         target: str = None,
     ):
+        self.db = db
         self.dataId = dataId
         self.skip_features = skip_features
         self.datetime_format = datetime_format
@@ -115,6 +115,7 @@ class PathAnalysis:
             print("Saving analysis result...")
             self.save_analysis_information()
             self.save_result()
+            self.save_analysis_table_to_db()
             time.sleep(0.001)
             bar()
 
@@ -124,9 +125,7 @@ class PathAnalysis:
         self.print_analysis_table()
 
     def fetch_data_from_db(self):
-        db_engine = create_db_engine()
-
-        with db_engine.connect() as connection:
+        with self.db.connect() as connection:
             query = text("SELECT CName FROM [DV].[dbo].[Object] where OID = :OID")
             object_table = connection.execute(query, {"OID": self.dataId}).fetchall()
 
@@ -710,3 +709,6 @@ class PathAnalysis:
             print(tabulate(self.analysis_df[0:10], floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
         else:
             print(tabulate(self.analysis_df, floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
+
+    def save_analysis_table_to_db(self):
+        self.analysis_df.to_sql("A" + str(self.dataId), self.db, if_exists="replace", index=False, schema="dbo")

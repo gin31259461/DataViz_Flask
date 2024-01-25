@@ -3,13 +3,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import Engine, text
 from sqlalchemy.exc import ResourceClosedError
 from tabulate import tabulate
 
-from db import create_db_engine
-
-AggMethodType = Literal["sum", "mean", "count"]
+AggMethodType = Literal["sum", "mean"]
 
 
 @dataclass
@@ -28,6 +26,7 @@ class GroupedChartInstance:
 class PivotAnalysis:
     def __init__(
         self,
+        db: Engine = None,
         data: pd.DataFrame = None,
         dataId: int = None,
         index=None,
@@ -36,7 +35,9 @@ class PivotAnalysis:
         focus_columns: list[str] = None,
         focus_index=None,
     ) -> None:
-        if data is None and dataId is not None:
+        self.db = db
+
+        if data is None and dataId is not None and db is not None:
             self.dataId = dataId
             self.fetch_data_from_db()
         else:
@@ -53,9 +54,7 @@ class PivotAnalysis:
         self.index_value_counts = None
 
     def fetch_data_from_db(self):
-        db_engine = create_db_engine()
-
-        with db_engine.connect() as connection:
+        with self.db.connect() as connection:
             query = text(
                 "IF (EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES"
                 + f" WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'A{self.dataId}'))"
@@ -82,7 +81,7 @@ class PivotAnalysis:
             self.values = target
             self.focus_index = None
 
-            self.start_pivot_table()
+            self.start_pivot_table(agg_method=["mean"])
             before_focus_index = self.to_grouped_data()
             before_index_value_counts = self.index_value_counts
             # self.print_pivoted_table()
@@ -91,7 +90,7 @@ class PivotAnalysis:
             # ! 也就是切割後的圖表只會呈現 focus index 中的 index
             self.focus_index = values
 
-            self.start_pivot_table()
+            self.start_pivot_table(agg_method=["mean"])
             after_focus_index = self.to_grouped_data()
             after_index_value_counts = self.index_value_counts
             # self.print_pivoted_table()
@@ -104,7 +103,8 @@ class PivotAnalysis:
                         {
                             "name": before_index_value_counts.index.name + " " + before_index_value_counts.name,
                             "label": v,
-                            "value": before_index_value_counts[v],
+                            # ! convert int64 value to python int
+                            "value": int(before_index_value_counts[v]),
                         }
                         for v in before_index_value_counts.index.tolist()
                     ],
@@ -112,7 +112,8 @@ class PivotAnalysis:
                         {
                             "name": after_index_value_counts.index.name + " " + after_index_value_counts.name,
                             "label": v,
-                            "value": after_index_value_counts[v],
+                            # ! convert int64 value to python int
+                            "value": int(after_index_value_counts[v]),
                         }
                         for v in after_index_value_counts.index.tolist()
                     ],
@@ -121,6 +122,10 @@ class PivotAnalysis:
 
     # agg : aggregate 聚合
     def start_pivot_table(self, agg_method: list[AggMethodType] = ["sum"]):
+        if self.data is None:
+            print("No data!")
+            return
+
         if self.index is None or self.values is None:
             return None
 
@@ -194,6 +199,10 @@ class PivotAnalysis:
         pivoted_dict: dict = json.loads(self.to_json())
 
         for k in pivoted_dict.keys():
+            # ! convert int64 value to python int
+            for group_key in pivoted_dict[k].keys():
+                pivoted_dict[k][group_key] = int(pivoted_dict[k][group_key])
+
             data.append({"x": k, "group": pivoted_dict[k]})
 
         return data
@@ -222,7 +231,8 @@ class PivotAnalysis:
                 part = {}
                 part["name"] = ki
                 part["label"] = kj
-                part["value"] = pivoted_dict[ki][kj]
+                # ! convert int64 value to python int
+                part["value"] = int(pivoted_dict[ki][kj])
                 data.append(part)
 
         return data
