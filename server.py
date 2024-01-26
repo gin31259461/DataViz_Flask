@@ -72,22 +72,44 @@ def get_data_info():
     return data_info
 
 
+# ! 關於分析 API 的參數傳遞
+# * 分析的某些參數需要給 JSON string
+# 1. 呼叫此 API 時需要先將 JSON 格式的參數轉成字串。
+# 2. 然後再轉成 URI 格式。
+# 3. 最後放到 URL 的參數裡面
+
+
 # * Params
 # dataId
 # target
+# skip_features
+# skip_values
 # concept_hierarchy
 @server.route("/api/path_analysis", methods=["GET"])
 def path_analysis():
     dataId = request.args.get("dataId")
     target = request.args.get("target")
-    concept_hierarchy = json.loads(request.args.get("concept_hierarchy"))
+    skip_features = request.args.get("skip_features")
+    skip_values = request.args.get("skip_values")
+    concept_hierarchy = request.args.get("concept_hierarchy")
+
+    if dataId is None or target is None:
+        return {}
 
     path = PathAnalysis(
         dataId=dataId,
         db=db_engine,
-        concept_hierarchy=concept_hierarchy,
         target=target,
     )
+
+    if skip_features is not None:
+        path.skip_features = json.loads(json.loads(skip_features))
+
+    if skip_values is not None:
+        path.skip_values = json.loads(json.loads(skip_values))
+
+    if concept_hierarchy is not None:
+        path.concept_hierarchy = json.loads(json.loads(concept_hierarchy))
 
     path.analysis_pipeline()
 
@@ -102,11 +124,14 @@ def path_analysis():
 def process_pivot_analysis():
     dataId = request.args.get("dataId")
     target = request.args.get("target")
-    process = json.loads(request.args.get("process"))
+    process = request.args.get("process")
 
     pivot = PivotAnalysis(dataId=dataId, db=db_engine)
 
-    pivot.process_pivot_data(process, target)
+    if process is None:
+        return {}
+
+    pivot.process_pivot_data(json.loads(json.loads(process)), target)
 
     return pivot.process_result
 

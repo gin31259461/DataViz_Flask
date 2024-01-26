@@ -46,6 +46,7 @@ class PathAnalysis:
         self,
         dataId: int,
         skip_features: list[str] = [],
+        skip_values: dict = {},
         db: Engine = None,
         datetime_format: str = None,
         concept_hierarchy: dict = None,
@@ -55,13 +56,14 @@ class PathAnalysis:
         self.db = db
         self.dataId = dataId
         self.skip_features = skip_features
+        self.skip_values = skip_values
         self.datetime_format = datetime_format
         self.concept_hierarchy = concept_hierarchy
         self.column_types = column_types
         self.target = target
 
         self.max_depth = 50
-        self.entropy_threshold = 0.1
+        self.entropy_threshold = 0.4
         self.datetime_columns = []
         self.quantile_labels = ["low", "middle", "high"]
 
@@ -72,8 +74,8 @@ class PathAnalysis:
             time.sleep(0.001)
             bar()
 
-            print("Define column types...")
-            self.pre_define_column_types()
+            print("Preprocessing...")
+            self.preprocessing()
             time.sleep(0.001)
             bar()
 
@@ -134,15 +136,20 @@ class PathAnalysis:
             query = text(f"SELECT * FROM [RawDB].[dbo].[D{self.dataId}]")
             data = connection.execute(query).fetchall()
 
-            self.train_df = pd.DataFrame(data)
-            self.origin_df = self.train_df.copy()
+            self.origin_df = pd.DataFrame(data)
+            self.train_df = self.origin_df.copy()
             self.analysis_df = self.train_df.copy()
             self.column_names = self.train_df.columns.tolist()
 
-    def pre_define_column_types(self):
+    def preprocessing(self):
         for column in self.column_types.keys():
             self.train_df[column] = self.train_df[column].astype(self.column_types[column])
             self.analysis_df[column] = self.analysis_df[column].astype(self.column_types[column])
+
+        # drop rows that contain values
+        # https://www.statology.org/pandas-drop-rows-with-value/
+        for column in self.skip_values.keys():
+            self.train_df = self.train_df[~self.train_df[column].isin(self.skip_values[column])]
 
     # ! Warning: 數值欄位不允許有千分位 , 分隔符號，只能是純數字
     def search_numerical_column(self):
@@ -298,7 +305,7 @@ class PathAnalysis:
     def transform_concept_hierarchy(self):
         # print(f"Target origin entropy: {self.count_target_entropy()}")
 
-        for col in self.concept_hierarchy:
+        for col in self.concept_hierarchy.keys():
             # print(f"Origin {col} entropy:", self.count_feature_gain(col))
             hierarchy = self.concept_hierarchy[col]["hierarchy"]
             for concept in hierarchy:
@@ -461,7 +468,7 @@ class PathAnalysis:
                     sample_value[len(sample_value) - 1] = sample_value[len(sample_value) - 1][0:-1]
 
                     path_analysis_result_part["entropy"] = float(split_value)
-                    path_analysis_result_part["samples"] = list(map(lambda value: int(value), sample_value))
+                    path_analysis_result_part["samples"] = list(map(lambda value: float(value), sample_value))
                     path_analysis_result_part["labels"] = self.clf.classes_.tolist()
                     path_analysis_result_part["class"] = class_name
                     path_analysis_result_part["target"] = self.target
