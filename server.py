@@ -136,5 +136,17 @@ def process_pivot_analysis():
     return pivot.process_result
 
 
+# * Params
+# dataId
+# index
+# values
+# columns
+# focus_index
+# focus_columns
+@server.route("/api/pivot_table", methods=["GET"])
+def pivot_table():
+    pass
+
+
 if __name__ == "__main__":
     server.run(debug=True, host="10.22.22.97", port=3090)

@@ -1,5 +1,3 @@
-import json
-
 from analysis.path_analysis import PathAnalysis
 from db import create_db_engine
 
@@ -26,17 +24,18 @@ path.analysis_pipeline()
 # * pivot analysis
 
 p = path.result["high"][6]["process"]
-print(json.dumps(p, ensure_ascii=False))
+# print(json.dumps(p, ensure_ascii=False))
 
-# TODO: 驗證所有 high 路徑的內容
-# TODO: 驗證時間的 entropy
-# TODO: 驗證 feature 分割的是否正確
 # TODO: 思考 process 圖表的解釋性
 
 
-# for high in path.result["high"]:
-#     process = high["process"]
-#     print(process, end="\n\n")
+for high in path.result["high"]:
+    process = high["process"]
+
+    for p in process:
+        print(p, end="\n\n")
+
+    print("---------------------")
 
 
 # pivot = PivotAnalysis(dataId=769, db=db_engine)

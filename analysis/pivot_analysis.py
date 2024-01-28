@@ -29,11 +29,11 @@ class PivotAnalysis:
         db: Engine = None,
         data: pd.DataFrame = None,
         dataId: int = None,
-        index=None,
-        values=None,
-        columns=None,
+        index: str = None,
+        values: str = None,
+        columns: str = None,
         focus_columns: list[str] = None,
-        focus_index=None,
+        focus_index: str = None,
     ) -> None:
         self.db = db
 
@@ -46,10 +46,10 @@ class PivotAnalysis:
         self.index = index
         self.values = values
         self.columns = columns
-        self.focus_columns = focus_columns
         self.focus_index = focus_index
+        self.focus_columns = focus_columns
 
-        self.pivoted_table = None
+        self.pivoted_table: pd.DataFrame | None = None
         self.process_result = None
         self.index_value_counts = None
 
