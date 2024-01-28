@@ -103,13 +103,13 @@ def path_analysis():
     )
 
     if skip_features is not None:
-        path.skip_features = json.loads(json.loads(skip_features))
+        path.skip_features = json.loads(skip_features)
 
     if skip_values is not None:
-        path.skip_values = json.loads(json.loads(skip_values))
+        path.skip_values = json.loads(skip_values)
 
     if concept_hierarchy is not None:
-        path.concept_hierarchy = json.loads(json.loads(concept_hierarchy))
+        path.concept_hierarchy = json.loads(concept_hierarchy)
 
     path.analysis_pipeline()
 
@@ -131,7 +131,7 @@ def process_pivot_analysis():
     if process is None:
         return {}
 
-    pivot.process_pivot_data(json.loads(json.loads(process)), target)
+    pivot.process_pivot_data(json.loads(process), target)
 
     return pivot.process_result
 

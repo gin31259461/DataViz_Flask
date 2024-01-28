@@ -1,3 +1,5 @@
+import json
+
 from analysis.path_analysis import PathAnalysis
 from db import create_db_engine
 
@@ -18,11 +20,13 @@ path = PathAnalysis(
     target="信用卡交易金額[新台幣]",
 )
 
+
 path.analysis_pipeline()
 
 # * pivot analysis
 
-print(path.result["high"][6]["process"])
+p = path.result["high"][6]["process"]
+print(json.dumps(p, ensure_ascii=False))
 
 # TODO: 驗證所有 high 路徑的內容
 # TODO: 驗證時間的 entropy
