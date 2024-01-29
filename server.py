@@ -1,4 +1,3 @@
-import json
 import ssl
 import tempfile
 
@@ -72,26 +71,21 @@ def get_data_info():
     return data_info
 
 
-# ! 關於分析 API 的參數傳遞
-# * 分析的某些參數需要給 JSON string
-# 1. 呼叫此 API 時需要先將 JSON 格式的參數轉成字串。
-# 2. 然後再轉成 URI 格式。
-# 3. 最後放到 URL 的參數裡面
-
-
-# * Params
+# * Data
 # dataId
 # target
 # skip_features
 # skip_values
 # concept_hierarchy
-@server.route("/api/path_analysis", methods=["GET"])
+@server.route("/api/path_analysis", methods=["POST"])
 def path_analysis():
-    dataId = request.form.get("dataId")
-    target = request.form.get("target")
-    skip_features = request.form.get("skip_features")
-    skip_values = request.form.get("skip_values")
-    concept_hierarchy = request.form.get("concept_hierarchy")
+    data: dict = request.get_json()
+
+    dataId = data.get("dataId")
+    target = data.get("target")
+    skip_features = data.get("skip_features")
+    skip_values = data.get("skip_values")
+    concept_hierarchy = data.get("concept_hierarchy")
 
     if dataId is None or target is None:
         return {}
@@ -103,40 +97,42 @@ def path_analysis():
     )
 
     if skip_features is not None:
-        path.skip_features = json.loads(skip_features)
+        path.skip_features = skip_features
 
     if skip_values is not None:
-        path.skip_values = json.loads(skip_values)
+        path.skip_values = skip_values
 
     if concept_hierarchy is not None:
-        path.concept_hierarchy = json.loads(concept_hierarchy)
+        path.concept_hierarchy = concept_hierarchy
 
     path.analysis_pipeline()
 
     return path.result
 
 
-# * Params
+# * Data
 # dataId
 # target
 # process
-@server.route("/api/process_pivot_analysis", methods=["GET"])
+@server.route("/api/process_pivot_analysis", methods=["POST"])
 def process_pivot_analysis():
-    dataId = request.args.get("dataId")
-    target = request.args.get("target")
-    process = request.args.get("process")
+    data: dict = request.get_json()
+
+    dataId = data.get("dataId")
+    target = data.get("target")
+    process = data.get("process")
 
     pivot = PivotAnalysis(dataId=dataId, db=db_engine)
 
     if process is None:
         return {}
 
-    pivot.process_pivot_data(json.loads(process), target)
+    pivot.process_pivot_data(process, target)
 
     return pivot.process_result
 
 
-# * Params
+# * Data
 # dataId
 # index
 # values
@@ -149,5 +145,4 @@ def pivot_table():
 
 
 if __name__ == "__main__":
-    # server.run(debug=True, host="10.22.22.97", port=3090)
-    server.run(debug=True, host="127.0.0.1", port=3090)
+    server.run(debug=True, host="10.22.22.97", port=3090)

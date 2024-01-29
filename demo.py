@@ -24,18 +24,20 @@ path.analysis_pipeline()
 # * pivot analysis
 
 p = path.result["high"][6]["process"]
+print(p)
+
 # print(json.dumps(p, ensure_ascii=False))
 
 # TODO: 思考 process 圖表的解釋性
 
 
-for high in path.result["high"]:
-    process = high["process"]
+# for high in path.result["high"]:
+#     process = high["process"]
 
-    for p in process:
-        print(p, end="\n\n")
+#     for p in process:
+#         print(p, end="\n\n")
 
-    print("---------------------")
+#     print("---------------------")
 
 
 # pivot = PivotAnalysis(dataId=769, db=db_engine)
