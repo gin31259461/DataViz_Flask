@@ -87,11 +87,11 @@ def get_data_info():
 # concept_hierarchy
 @server.route("/api/path_analysis", methods=["GET"])
 def path_analysis():
-    dataId = request.args.get("dataId")
-    target = request.args.get("target")
-    skip_features = request.args.get("skip_features")
-    skip_values = request.args.get("skip_values")
-    concept_hierarchy = request.args.get("concept_hierarchy")
+    dataId = request.form.get("dataId")
+    target = request.form.get("target")
+    skip_features = request.form.get("skip_features")
+    skip_values = request.form.get("skip_values")
+    concept_hierarchy = request.form.get("concept_hierarchy")
 
     if dataId is None or target is None:
         return {}
@@ -149,4 +149,5 @@ def pivot_table():
 
 
 if __name__ == "__main__":
-    server.run(debug=True, host="10.22.22.97", port=3090)
+    # server.run(debug=True, host="10.22.22.97", port=3090)
+    server.run(debug=True, host="127.0.0.1", port=3090)
