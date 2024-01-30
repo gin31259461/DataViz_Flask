@@ -28,22 +28,27 @@ db_engine = create_db_engine()
 # file
 @server.route("/api/file_upload", methods=["POST"])
 def file_upload():
-    dataId = request.form["dataId"]
-    if request.files:
-        csvFile = request.files["file"]
+    dataId = request.form.get("dataId")
+    file = request.files.get("file")
+    url = request.form.get("url")
+
+    if dataId is None:
+        return {"message": "Invalid data id"}
+
+    if file is not None:
         tempFile = tempfile.NamedTemporaryFile(delete=False)
-        csvFile.save(tempFile.name)
+        file.save(tempFile.name)
         with open(tempFile.name, "rb") as f:
             data = read_csv(f, encoding="utf-8", encoding_errors="ignore")
             print(data)
-            data_to_sql(data, "D" + dataId)
-    elif request.form["url"]:
+            data_to_sql(db_engine, data, "D" + dataId)
+    elif url is not None:
         url = request.form["url"]
         data = read_csv(url, encoding="utf-8", encoding_errors="ignore")
         print(data)
-        data_to_sql(data, "D" + dataId)
+        data_to_sql(db_engine, data, "D" + dataId)
 
-    return "upload successfully"
+    return {"message": "upload file done"}
 
 
 # * Params
