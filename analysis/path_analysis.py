@@ -49,7 +49,7 @@ class PathAnalysis:
         skip_values: dict = {},
         db: Engine = None,
         datetime_format: str = None,
-        concept_hierarchy: dict = None,
+        concept_hierarchy: dict = {},
         column_types: dict = {},
         target: str = None,
     ):
