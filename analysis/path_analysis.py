@@ -63,7 +63,7 @@ class PathAnalysis:
         self.target = target
 
         self.max_depth = 50
-        self.entropy_threshold = 0.4
+        self.entropy_threshold = 0.1
         self.datetime_columns = []
         self.quantile_labels = ["low", "middle", "high"]
 
