@@ -26,8 +26,8 @@ db_engine = create_db_engine()
 # url
 # * files:
 # file
-@server.route("/api/file_upload", methods=["POST"])
-def file_upload():
+@server.route("/api/upload_file", methods=["POST"])
+def upload_file():
     dataId = request.form.get("dataId")
     file = request.files.get("file")
     url = request.form.get("url")
