@@ -63,15 +63,34 @@ def get_data_info():
         cursor_result = connection.execute(query, {"OID": dataId})
         data = DataFrame(cursor_result.fetchall())
 
-    data_info = {}
-    for column in data.columns.tolist():
-        data_info[column] = {}
-        data_info[column]["type"] = data[column].dtype.name
+    data_info = {"columns": {}, "info": {}}
 
-        if data_info[column]["type"] == "float64" or data_info[column]["type"] == "int64":
-            data_info[column]["values"] = len(data[column].unique())
-        else:
-            data_info[column]["values"] = data[column].unique().tolist()
+    data_info["info"]["id"] = dataId
+    data_info["info"]["rows"] = data.size
+
+    with db_engine.connect() as connection:
+        query = text("SELECT CName, CDes FROM [DV].[dbo].[Object] where OID = :OID")
+        object_table = DataFrame(connection.execute(query, {"OID": dataId}).fetchall())
+        data_name = object_table["CName"][0]
+        data_des = object_table["CDes"][0]
+
+        data_info["info"]["name"] = data_name
+        data_info["info"]["des"] = data_des
+
+    for column in data.columns.tolist():
+        data_info["columns"][column] = {}
+        col_type = data[column].dtype.name
+
+        match col_type:
+            case "float64":
+                data_info["columns"][column]["type"] = "float"
+                data_info["columns"][column]["values"] = len(data[column].unique())
+            case "int64":
+                data_info["columns"][column]["type"] = "number"
+                data_info["columns"][column]["values"] = len(data[column].unique())
+            case "object":
+                data_info["columns"][column]["type"] = "string"
+                data_info["columns"][column]["values"] = data[column].unique().tolist()
 
     return data_info
 
