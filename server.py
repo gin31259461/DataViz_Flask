@@ -1,5 +1,6 @@
 import ssl
 import tempfile
+import os
 
 from flask import Flask, request
 from flask_cors import CORS
@@ -36,7 +37,7 @@ def upload_file():
         return {"message": "Invalid data id"}
 
     if file is not None:
-        tempFile = tempfile.NamedTemporaryFile(delete=True)
+        tempFile = tempfile.NamedTemporaryFile(delete=False, mode="w")
         try:
             file.save(tempFile.name)
             with open(tempFile.name, "rb") as f:
@@ -45,6 +46,7 @@ def upload_file():
                 data_to_sql(db_engine, data, "D" + dataId)
         finally:
             tempFile.close()
+            os.remove(tempFile.name)
     elif url is not None:
         url = request.form["url"]
         data = read_csv(url, encoding="utf-8", encoding_errors="ignore")
