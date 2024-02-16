@@ -55,7 +55,7 @@ class PathAnalysis:
     ):
         self.db = db
         self.dataId = dataId
-        self.skip_features = skip_features
+        self.skip_features = skip_features.copy()
         self.skip_values = skip_values
         self.datetime_format = datetime_format
         self.concept_hierarchy = concept_hierarchy
@@ -64,6 +64,7 @@ class PathAnalysis:
 
         self.max_depth = 50
         self.entropy_threshold = 0.1
+        self.column_names = []
         self.datetime_columns = []
         self.quantile_labels = ["low", "middle", "high"]
 
@@ -234,6 +235,7 @@ class PathAnalysis:
                         ]
                     )
                     break
+
             self.datetime_column = datetime_column_tuple
 
     # 轉換時間型欄位 -> 年、季、月
@@ -294,10 +296,9 @@ class PathAnalysis:
                 datetime_freq_entropy.append(feature_entropy)
 
             # ! validate entropy test
-            print(f"Original target entropy: {self.count_target_entropy()}")
-            print(f"年月 entropy: {self.count_feature_gain('年月')}")
-            print(datetime_freq_manifest)
-            print(datetime_freq_entropy)
+            # print(f"Original target entropy: {self.count_target_entropy()}")
+            # print(datetime_freq_manifest)
+            # print(datetime_freq_entropy)
 
             self.skip_features.append(col)
             self.datetime_columns = datetime_columns
@@ -319,11 +320,8 @@ class PathAnalysis:
     def prepare_data_to_fit(self):
         self.train_df = self.train_df.drop_duplicates(keep="first")
 
-        X: pd.DataFrame
-        try:
-            X = self.train_df.drop([self.target] + self.skip_features, axis=1)
-        except KeyError:
-            print("Column of target or skip features are not exist in data frame")
+        X = self.train_df.drop(self.skip_features, axis=1)
+        X = X.drop(self.target, axis=1)
 
         self.X = X
         self.y = self.train_df[self.target].astype("string")
@@ -590,7 +588,7 @@ class PathAnalysis:
         analysis_information["feature_names"] = self.feature_names
 
         # Numeric
-        feature_series: dict[str, dict[str, str or list]] = {}
+        feature_series: dict[str, dict[str, str | list]] = {}
 
         for n in self.numerical_column:
             feature_series[n[0]] = {"type": "numeric", "value": [n[1], n[2]]}

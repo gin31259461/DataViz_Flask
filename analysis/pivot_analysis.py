@@ -32,7 +32,7 @@ class PivotAnalysis:
         index: str = None,
         values: str = None,
         columns: str = None,
-        focus_columns: list[str] = None,
+        focus_columns: list[str] = [],
         focus_index: str = None,
     ) -> None:
         self.db = db
@@ -47,7 +47,7 @@ class PivotAnalysis:
         self.values = values
         self.columns = columns
         self.focus_index = focus_index
-        self.focus_columns = focus_columns
+        self.focus_columns = focus_columns.copy()
 
         self.pivoted_table: pd.DataFrame | None = None
         self.process_result = None
@@ -96,28 +96,31 @@ class PivotAnalysis:
             # self.print_pivoted_table()
 
             self.process_result.append(
-                [
-                    before_focus_index,
-                    after_focus_index,
-                    [
-                        {
-                            "name": before_index_value_counts.index.name + " " + before_index_value_counts.name,
-                            "label": v,
-                            # ! convert int64 value to python int
-                            "value": int(before_index_value_counts[v]),
-                        }
-                        for v in before_index_value_counts.index.tolist()
-                    ],
-                    [
-                        {
-                            "name": after_index_value_counts.index.name + " " + after_index_value_counts.name,
-                            "label": v,
-                            # ! convert int64 value to python int
-                            "value": int(after_index_value_counts[v]),
-                        }
-                        for v in after_index_value_counts.index.tolist()
-                    ],
-                ]
+                {
+                    "split_feature": column,
+                    "chart_data": {
+                        "before_split_count": before_focus_index,
+                        "after_split_count": after_focus_index,
+                        "befor_split_rate": [
+                            {
+                                "name": before_index_value_counts.index.name + " " + before_index_value_counts.name,
+                                "label": v,
+                                # ! convert int64 value to python int
+                                "value": int(before_index_value_counts[v]),
+                            }
+                            for v in before_index_value_counts.index.tolist()
+                        ],
+                        "after_split_rate": [
+                            {
+                                "name": after_index_value_counts.index.name + " " + after_index_value_counts.name,
+                                "label": v,
+                                # ! convert int64 value to python int
+                                "value": int(after_index_value_counts[v]),
+                            }
+                            for v in after_index_value_counts.index.tolist()
+                        ],
+                    },
+                }
             )
 
     # agg : aggregate 聚合
@@ -149,20 +152,22 @@ class PivotAnalysis:
                 observed=True,
             )
 
-        if self.focus_columns is not None:
+        if len(self.focus_columns) > 0:
             pivoted_table = pivoted_table[self.focus_columns]
 
         # 如果 index 是 year, month, day 則重新排序
-        if (
-            pivoted_table.index.name == "year"
-            or pivoted_table.index.name == "month"
-            or pivoted_table.index.name == "day"
-        ):
-            self.pivoted_table = pivoted_table.reindex(
-                index=pivoted_table.index.to_series().astype(int).sort_values().index
-            )
-        else:
-            self.pivoted_table = pivoted_table
+        # if (
+        #     pivoted_table.index.name == "year"
+        #     or pivoted_table.index.name == "month"
+        #     or pivoted_table.index.name == "day"
+        # ):
+        #     self.pivoted_table = pivoted_table.reindex(
+        #         index=pivoted_table.index.to_series().astype(int).sort_values().index
+        #     )
+        # else:
+        #     self.pivoted_table = pivoted_table
+
+        self.pivoted_table = pivoted_table
 
         self.index_value_counts = self.data[self.index].value_counts()
 

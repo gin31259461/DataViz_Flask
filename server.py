@@ -114,11 +114,7 @@ def path_analysis():
     if dataId is None or target is None:
         return {}
 
-    path = PathAnalysis(
-        dataId=dataId,
-        db=db_engine,
-        target=target,
-    )
+    path = PathAnalysis(dataId=dataId, db=db_engine, target=target)
 
     if skip_features is not None:
         path.skip_features = skip_features
