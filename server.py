@@ -36,12 +36,15 @@ def upload_file():
         return {"message": "Invalid data id"}
 
     if file is not None:
-        tempFile = tempfile.NamedTemporaryFile(delete=False)
-        file.save(tempFile.name)
-        with open(tempFile.name, "rb") as f:
-            data = read_csv(f, encoding="utf-8", encoding_errors="ignore")
-            print(data)
-            data_to_sql(db_engine, data, "D" + dataId)
+        tempFile = tempfile.NamedTemporaryFile(delete=True)
+        try:
+            file.save(tempFile.name)
+            with open(tempFile.name, "rb") as f:
+                data = read_csv(f, encoding="utf-8", encoding_errors="ignore")
+                print(data)
+                data_to_sql(db_engine, data, "D" + dataId)
+        finally:
+            tempFile.close()
     elif url is not None:
         url = request.form["url"]
         data = read_csv(url, encoding="utf-8", encoding_errors="ignore")
