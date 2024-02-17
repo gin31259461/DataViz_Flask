@@ -66,7 +66,7 @@ class PathAnalysis:
         self.entropy_threshold = 0.1
         self.column_names = []
         self.datetime_columns = []
-        self.quantile_labels = ["low", "middle", "high"]
+        self.quantile_labels = ["低分布", "中分布", "高分布"]
 
     def analysis_pipeline(self):
         with alive_bar(10) as bar:

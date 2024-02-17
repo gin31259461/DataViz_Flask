@@ -101,7 +101,7 @@ class PivotAnalysis:
                     "chart_data": {
                         "before_split_count": before_focus_index,
                         "after_split_count": after_focus_index,
-                        "befor_split_rate": [
+                        "before_split_rate": [
                             {
                                 "name": before_index_value_counts.index.name + " " + before_index_value_counts.name,
                                 "label": v,
