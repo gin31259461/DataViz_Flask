@@ -53,7 +53,7 @@ def upload_file():
         print(data)
         data_to_sql(db_engine, data, "D" + dataId)
 
-    return {"message": "upload file done"}
+    return {"message": "上傳檔案成功"}
 
 
 # * Params
