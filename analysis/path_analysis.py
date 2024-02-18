@@ -254,7 +254,7 @@ class PathAnalysis:
             # * Compare which datetime frequency is the best
             # datetime_freq_manifest = ["year", "quarter", "month", "week", "day"]
             # freq_manifest = ["YS", "QS", "MS", "W", "D"]
-            datetime_freq_manifest = ["year", "quarter", "month"]
+            datetime_freq_manifest = ["年", "季", "月"]
             freq_manifest = ["YS", "QS", "MS"]
             freq_mapping = pd.Series(data=freq_manifest, index=datetime_freq_manifest)
             # ! validate entropy
@@ -633,32 +633,34 @@ class PathAnalysis:
         labels: list[str] = []
 
         match freq:
-            case "year":
+            case "年":
                 labels = [str(year) for year in list(datetime_manifest.year)]
                 if len(labels) >= 0:
                     labels.pop()
-            case "quarter":
+            case "季":
                 for i in range(1, len(datetime_manifest)):
                     lower_bound = datetime_manifest[i - 1].month
                     higher_bound = datetime_manifest[i].month
 
                     match [lower_bound, higher_bound]:
                         case [1, 4]:
-                            labels.append("Q1")
+                            labels.append("第一季")
                         case [4, 7]:
-                            labels.append("Q2")
+                            labels.append("第二季")
                         case [7, 10]:
-                            labels.append("Q3")
+                            labels.append("第三季")
                         case [10, 1]:
-                            labels.append("Q4")
+                            labels.append("第四季")
                         case _:
-                            label_mapping = pd.Series(data=["Q1", "Q2", "Q3", "Q4"], index=[1, 4, 7, 10])
+                            label_mapping = pd.Series(
+                                data=["第一季", "第二季", "第三季", "第四季"], index=[1, 4, 7, 10]
+                            )
                             labels.append(label_mapping[lower_bound])
-            case "month":
+            case "月":
                 labels = [str(month) for month in list(datetime_manifest.month)]
                 if len(labels) >= 0:
                     labels.pop()
-            case "week":
+            case "週":
                 labels = [
                     "{}".format(
                         datetime.strftime(datetime_manifest[i], format="%U"),
@@ -667,7 +669,7 @@ class PathAnalysis:
                 ]
                 if len(labels) >= 0:
                     labels.pop()
-            case "day":
+            case "日":
                 labels = [str(day) for day in list(datetime_manifest.day)]
                 if len(labels) >= 0:
                     labels.pop()
