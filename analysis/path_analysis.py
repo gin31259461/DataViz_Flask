@@ -716,4 +716,6 @@ class PathAnalysis:
             print(tabulate(self.analysis_df, floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
 
     def save_analysis_table_to_db(self):
-        self.analysis_df.to_sql("A" + str(self.dataId), self.db, if_exists="replace", index=False, schema="dbo")
+        self.analysis_df.to_sql(
+            "A" + str(self.dataId), self.db, if_exists="replace", index=False, schema="dbo", method="multi"
+        )

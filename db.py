@@ -18,14 +18,10 @@ def create_db_engine():
     pno = conf["port"]
     db = conf["db"]
     str = f"mssql+pyodbc://{uid}:{pwd}@{srv}{ins}:{pno}/{db}?driver={drv}"
-    db_engine = create_engine(str, fast_executemany=True)
-    return db_engine
+
+    return create_engine(str, fast_executemany=True)
 
 
 def data_to_sql(db: Engine, data: DataFrame, name: str):
-    if not name:
-        print("dataId is not valid")
-        return
-
     df = DataFrame(data)
-    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo")
+    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo", method="multi")
