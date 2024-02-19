@@ -80,13 +80,13 @@ class PathAnalysis:
             time.sleep(0.001)
             bar()
 
-            print("Search numerical column...")
-            self.search_numerical_column()
+            print("Search datetime column...")
+            self.search_datetime_column()
             time.sleep(0.001)
             bar()
 
-            print("Search datetime column...")
-            self.search_datetime_column()
+            print("Search numerical column...")
+            self.search_numerical_column()
             time.sleep(0.001)
             bar()
 
@@ -318,7 +318,7 @@ class PathAnalysis:
             # print(f"After generalize {col} entropy:", self.count_feature_gain(col))
 
     def prepare_data_to_fit(self):
-        self.train_df = self.train_df.drop_duplicates(keep="first")
+        # self.train_df = self.train_df.drop_duplicates(keep="first")
 
         X = self.train_df.drop(self.skip_features, axis=1)
         X = X.drop(self.target, axis=1)
