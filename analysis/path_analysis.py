@@ -66,7 +66,7 @@ class PathAnalysis:
         self.entropy_threshold = 0.1
         self.column_names = []
         self.datetime_columns = []
-        self.quantile_labels = ["低分布", "中分布", "高分布"]
+        self.quantile_labels = ["極低分布", "低分布", "中間分布", "高分布", "極高分布"]
 
     def analysis_pipeline(self):
         with alive_bar(10) as bar:
@@ -180,9 +180,10 @@ class PathAnalysis:
             # quantile = pd.qcut(df[col], q=discrete_bin_num)
             # df[col] = pd.qcut(df[col], q=discrete_bin_num, labels=quantile_labels)
 
-            # 利用類似常態分佈的比例分類成三個等級 : 低、中、高
-            quantile = pd.qcut(self.train_df[col], q=[0, 0.1575, 0.8425, 1])
-            self.train_df[col] = pd.qcut(self.train_df[col], q=[0, 0.1575, 0.8425, 1], labels=self.quantile_labels)
+            # 利用類似常態分佈的比例分類
+            q = [0, 0.02275, 0.15865, 0.84135, 0.97725, 1]
+            quantile = pd.qcut(self.train_df[col], q=q)
+            self.train_df[col] = pd.qcut(self.train_df[col], q=q, labels=self.quantile_labels)
 
             if col != self.target:
                 self.analysis_df[col] = self.train_df[col]
@@ -254,8 +255,10 @@ class PathAnalysis:
             # * Compare which datetime frequency is the best
             # datetime_freq_manifest = ["year", "quarter", "month", "week", "day"]
             # freq_manifest = ["YS", "QS", "MS", "W", "D"]
-            datetime_freq_manifest = ["年", "季", "月"]
-            freq_manifest = ["YS", "QS", "MS"]
+            # datetime_freq_manifest = ["年", "季", "月"]
+            # freq_manifest = ["YS", "QS", "MS"]
+            datetime_freq_manifest = ["年", "月"]
+            freq_manifest = ["YS", "MS"]
             freq_mapping = pd.Series(data=freq_manifest, index=datetime_freq_manifest)
             # ! validate entropy
             datetime_freq_entropy = []
@@ -458,6 +461,7 @@ class PathAnalysis:
                 split_symbol = labels[1]
                 split_value = float(labels[2])
 
+                # 路徑的最後一個節點
                 if node_id == path.path[len(path.path) - 1]:
                     class_name = path.nodeLabel[node_id][3].split(" ")[2]
 
@@ -557,7 +561,9 @@ class PathAnalysis:
         )
 
         decision_tree_graph = DecisionTreeGraph(nodes, edges)
+
         paths = self.search_decision_tree_path(decision_tree_graph, 0)
+
         self.result = self.decision_tree_path_analyzer(paths)
 
         # convert remaining object columns to category columns
