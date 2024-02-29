@@ -723,6 +723,12 @@ class PathAnalysis:
         else:
             print(tabulate(self.analysis_df, floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
 
+    def print_original_table(self):
+        if self.origin_df.size > 10:
+            print(tabulate(self.origin_df[0:10], floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
+        else:
+            print(tabulate(self.origin_df, floatfmt=",.2f", tablefmt="github", headers="keys"), end="\n\n")
+
     def save_analysis_table_to_db(self):
         self.analysis_df.to_sql(
             "A" + str(self.dataId), self.db, if_exists="replace", index=False, schema="dbo", method="multi"
