@@ -24,4 +24,4 @@ def create_db_engine():
 
 def data_to_sql(db: Engine, data: DataFrame, name: str):
     df = DataFrame(data)
-    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo", method="multi")
+    df.to_sql(name, db, if_exists="replace", index=False, schema="dbo")
